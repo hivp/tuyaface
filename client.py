@@ -52,7 +52,7 @@ class Client:
                 # self.s.shutdown(socket.SHUT_RDWR)
                 self.s.close()
             except Exception as e:
-                print('hier ?', e)
+                pass
         self.s = None
         self.connected = False
 
@@ -98,21 +98,20 @@ class Client:
         ))
 
 
-    def run(self, request, receive_cnt):
+    def _send_request(self, request, receive_cnt):
 
         self.receive_cnt = 0
-        request_send = False
-        while True:
+        request_sent = False
+        while self.receive_cnt < receive_cnt:
             if not self.connected:
                 self._connect()
                 continue
        
-            if request_send == False:
+            if request_sent == False:
                 try:
                     self.s.send(request)
-                    request_send = True
+                    request_sent = True
                 except Exception as e:
-                    print(self.ipaddress,'hierdan', e)
                     return
           
             try:
@@ -145,10 +144,7 @@ class Client:
             #     print('SocketError',self.ipaddress, e)
             except Exception as e:
                 print('Exception',self.ipaddress, e)
-            
-            if self.receive_cnt >= receive_cnt:
-                return
-
+       
             time.sleep(0.1)
 
 
@@ -165,119 +161,8 @@ class Client:
     def set_version(self, version):
 
         self.version = version      
-    
-   
-    def generate_json_data(self, commandByte, data):
-
-        json_data = self.payload_dict[commandByte]
-
-        if 'gwId' in json_data:
-            json_data['gwId'] = self.device_id
-        if 'devId' in json_data:
-            json_data['devId'] = self.device_id
-        if 'uid' in json_data:
-            json_data['uid'] = self.device_id  # still use id, no seperate uid
-        if 't' in json_data:
-            json_data['t'] = str(int(time.time()))
-
-        if commandByte == '0d':
-            json_data['dps'] = {"1": None, "2": None, "3": None}
-        if data is not None:
-            json_data['dps'] = data
-
-        json_payload = json.dumps(json_data)  
-        return json_payload
-
-
-    def generate_payload(self, commandByte, data=None, protocol=False):
-        """
-        Generate the payload to send.
-
-        Args:
-            command(str): The type of command.
-                This is one of the entries from payload_dict
-            data(dict, optional): The data to be send.
-                This is what will be passed via the 'dps' entry
-        """
-        json_payload = self.generate_json_data(commandByte, data)
-
-        json_payload = json_payload.replace(' ', '')
-        json_payload = json_payload.encode('utf-8')
-
-
-        if self.version == 3.3:
-            # expect to connect and then disconnect to set new
-            self.cipher = AESCipher(self.localkey)
-            json_payload = self.cipher.encrypt(json_payload, False)
-            self.cipher = None
-            if commandByte != '0a':
-                # add the 3.3 header
-                json_payload = b'3.3' + \
-                    b"\0\0\0\0\0\0\0\0\0\0\0\0" + json_payload   
-
-        postfix_payload = hex2bin(
-            bin2hex(json_payload) + "000000000000aa55")
-
-        assert len(postfix_payload) <= 0xff
-        # TODO this assumes a single byte 0-255 (0x00-0xff)
-        postfix_payload_hex_len = '%x' % len(postfix_payload)
-     
-        self.request_cnt += 1
-        if self.request_cnt > 255:
-            self.request_cnt = 0
-
-
-        buffer = hex2bin( '000055aa' + 
-                        bin2hex(self.request_cnt.to_bytes(2, byteorder='big')) + 
-                        '0000000000' +
-                        commandByte +
-                        '000000' +
-                        postfix_payload_hex_len) + postfix_payload
-
-        # calc the CRC of everything except where the CRC goes and the suffix
-        hex_crc = format(binascii.crc32(buffer[:-8]) & 0xffffffff, '08X')
-        buffer = buffer[:-8] + hex2bin(hex_crc) + buffer[-4:]
-        return buffer
-
-
-    def _select_reply(self):
-
-        for reply in self.replies:
-            if reply != 'json obj data unvalid':
-                return reply 
-        return None
-
-
-    def _status(self, cmd = '0a', count = 1):
-      
-        payload = self.generate_payload(cmd) 
-        self.replies = []
-        self.run(payload, count)      
         
-        reply = self._select_reply()
-        if reply == None:
-            reply = self._status('0d', 2)
-        return reply
-
-
-    def status(self):
-
-        return json.loads(self._status())
-
-
-    def set_status(self, dps, payloads):
-
-        payload = self.generate_payload('07', {str(dps): payloads}) 
-        count = 2
-        self.replies = []
-        self.run(payload, count)
-
-        reply = self._select_reply()
-        if reply == None:
-            return reply
-        return json.loads(reply)
-
-
+  
     def on_connect(self):
         pass
 
@@ -339,7 +224,115 @@ class Client:
                     self._process_contole_new_result(data)
                 elif cmd == 16:
                     self.replies.append(self._process_query_new_result(data))
-        return count
+    
    
+    def _generate_json_data(self, commandByte, data):
 
+        json_data = self.payload_dict[commandByte]
+
+        if 'gwId' in json_data:
+            json_data['gwId'] = self.device_id
+        if 'devId' in json_data:
+            json_data['devId'] = self.device_id
+        if 'uid' in json_data:
+            json_data['uid'] = self.device_id  # still use id, no seperate uid
+        if 't' in json_data:
+            json_data['t'] = str(int(time.time()))
+
+        if commandByte == '0d':
+            json_data['dps'] = {"1": None, "2": None, "3": None}
+        if data is not None:
+            json_data['dps'] = data
+
+        json_payload = json.dumps(json_data)  
+        return json_payload
+
+
+    def _generate_payload(self, commandByte, data=None, protocol=False):
+        """
+        Generate the payload to send.
+
+        Args:
+            command(str): The type of command.
+                This is one of the entries from payload_dict
+            data(dict, optional): The data to be send.
+                This is what will be passed via the 'dps' entry
+        """
+        json_payload = self._generate_json_data(commandByte, data)
+
+        json_payload = json_payload.replace(' ', '')
+        json_payload = json_payload.encode('utf-8')
+
+
+        if self.version == 3.3:
+            # expect to connect and then disconnect to set new
+            self.cipher = AESCipher(self.localkey)
+            json_payload = self.cipher.encrypt(json_payload, False)
+            self.cipher = None
+            if commandByte != '0a':
+                # add the 3.3 header
+                json_payload = b'3.3' + \
+                    b"\0\0\0\0\0\0\0\0\0\0\0\0" + json_payload   
+
+        postfix_payload = hex2bin(
+            bin2hex(json_payload) + "000000000000aa55")
+
+        assert len(postfix_payload) <= 0xff
+        # TODO this assumes a single byte 0-255 (0x00-0xff)
+        postfix_payload_hex_len = '%x' % len(postfix_payload)
+     
+        self.request_cnt += 1
+        if self.request_cnt > 255:
+            self.request_cnt = 0
+
+
+        buffer = hex2bin( '000055aa' + 
+                        bin2hex(self.request_cnt.to_bytes(2, byteorder='big')) + 
+                        '0000000000' +
+                        commandByte +
+                        '000000' +
+                        postfix_payload_hex_len) + postfix_payload
+
+        # calc the CRC of everything except where the CRC goes and the suffix
+        hex_crc = format(binascii.crc32(buffer[:-8]) & 0xffffffff, '08X')
+        buffer = buffer[:-8] + hex2bin(hex_crc) + buffer[-4:]
+        return buffer
+
+
+    def _select_reply(self):
+
+        for reply in self.replies:
+            if reply != 'json obj data unvalid':
+                return reply 
+        return None
+
+
+    def _status(self, cmd = '0a', count = 1):
+      
+        payload = self._generate_payload(cmd) 
+        self.replies = []
+        self._send_request(payload, count)      
+        
+        reply = self._select_reply()
+        if reply == None:
+            reply = self._status('0d', 2)
+        return reply
+
+
+    def status(self):
+
+        return json.loads(self._status())
+
+
+    def set_status(self, dps, value):
+
+        payload = self._generate_payload('07', {str(dps): value}) 
+        count = 2
+        self.replies = []
+        self._send_request(payload, count)
+
+        reply = self._select_reply()
+        if reply == None:
+            return reply
+        return json.loads(reply)
    
