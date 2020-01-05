@@ -124,7 +124,8 @@ class Client:
             except (ConnectionResetError) as e:
                 print('ConnectionResetError',self.ipaddress, e)
                 self.connected = False
-                self.connection_reset_error_cnt += 1       
+                self.connection_reset_error_cnt += 1    
+                self._disconnect()   
                 self._connect()   
             except (ConnectionRefusedError) as e:
                 print('ConnectionRefusedError',self.ipaddress, e)
@@ -144,6 +145,14 @@ class Client:
             #     print('SocketError',self.ipaddress, e)
             except Exception as e:
                 print('Exception',self.ipaddress, e)
+
+            if self.connection_reset_error_cnt > 20 or \
+                self.connection_refused_error_cnt > 20 or \
+                self.connection_brokenpipe_error_cnt > 20 or \
+                self.connection_os_error_cnt > 20:
+                self._disconnect()
+                print('Too many errors, break',self.ipaddress)
+                return 
        
             time.sleep(0.1)
 
@@ -161,7 +170,7 @@ class Client:
     def set_version(self, version):
 
         self.version = version      
-        
+
   
     def on_connect(self):
         pass
@@ -307,21 +316,25 @@ class Client:
         return None
 
 
-    def _status(self, cmd = '0a', count = 1):
+    def _status(self, cmd = '0a', expect_reply = 1, recurse_cnt = 0):
       
         payload = self._generate_payload(cmd) 
         self.replies = []
-        self._send_request(payload, count)      
+        self._send_request(payload, expect_reply)      
         
         reply = self._select_reply()
-        if reply == None:
-            reply = self._status('0d', 2)
+        if reply == None and recurse_cnt < 5:
+            recurse_cnt += 1
+            reply = self._status('0d', 2, recurse_cnt)
         return reply
 
 
     def status(self):
 
-        return json.loads(self._status())
+        reply = self._status()
+        if reply == None:
+            return reply
+        return json.loads(reply)
 
 
     def set_status(self, dps, value):
