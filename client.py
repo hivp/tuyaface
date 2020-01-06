@@ -1,13 +1,48 @@
 
-import inspect
 import time
 import socket
 import json
 from bitstring import BitArray
 import binascii
+#for reduce
+# import functools
 
 from tuya.aescipher import AESCipher
 from tuya.helper import *
+
+
+UDP = 0
+AP_CONFIG = 1
+ACTIVE = 2
+BIND = 3
+RENAME_GW = 4
+RENAME_DEVICE = 5
+UNBIND = 6
+CONTROL = 7
+STATUS = 8
+HEART_BEAT = 9
+DP_QUERY = 10
+QUERY_WIFI = 11
+TOKEN_BIND = 12
+CONTROL_NEW = 13
+ENABLE_WIFI = 14
+DP_QUERY_NEW = 16
+SCENE_EXECUTE = 17
+UDP_NEW = 19
+AP_CONFIG_NEW = 20
+LAN_GW_ACTIVE = 240
+LAN_SUB_DEV_REQUEST = 241
+LAN_DELETE_SUB_DEV = 242
+LAN_REPORT_SUB_DEV = 243
+LAN_SCENE = 244
+LAN_PUBLISH_CLOUD_CONFIG = 245
+LAN_PUBLISH_APP_CONFIG = 246
+LAN_EXPORT_APP_CONFIG = 247
+LAN_PUBLISH_SCENE_PANEL = 248
+LAN_REMOVE_GW = 249
+LAN_CHECK_GW_UPDATE = 250
+LAN_GW_UPDATE = 251
+LAN_SET_GW_CHANNEL = 252
 
    
 def _generate_json_data(device_id: str, commandByte: str, data: dict):
@@ -17,8 +52,8 @@ def _generate_json_data(device_id: str, commandByte: str, data: dict):
         "07": {"devId": "", "uid": "", "t": ""}, 
         "08": {"gwId": "", "devId": ""},
         "09": {},
-        "0a": {"gwId": "", "devId": "", "uid": "", "t": ""},  
-        "0d": {"devId": "", "uid": "", "t": ""}, 
+        "0A": {"gwId": "", "devId": "", "uid": "", "t": ""},  
+        "0D": {"devId": "", "uid": "", "t": ""}, 
         "10": {"devId": "", "uid": "", "t": ""},          
     }
 
@@ -33,14 +68,15 @@ def _generate_json_data(device_id: str, commandByte: str, data: dict):
     if 't' in json_data:
         json_data['t'] = str(int(time.time()))
 
-    if commandByte == '0d':
+    if commandByte == '0D':
         json_data['dps'] = {"1": None, "2": None, "3": None}
     if data is not None:
         json_data['dps'] = data
 
     return json.dumps(json_data)  
 
-def _generate_payload(device: dict, request_cnt: int, commandByte: str, data: dict=None):
+
+def _generate_payload(device: dict, request_cnt: int, command: int, data: dict=None):
         """
         Generate the payload to send.
 
@@ -50,8 +86,9 @@ def _generate_payload(device: dict, request_cnt: int, commandByte: str, data: di
             data(dict, optional): The data to be send.
                 This is what will be passed via the 'dps' entry
         """
+        commandByte = bin2hex(command.to_bytes(1, byteorder='big'))
+        
         json_payload = _generate_json_data(device['id'], commandByte, data)
-
         json_payload = json_payload.replace(' ', '')
         json_payload = json_payload.encode('utf-8')
 
@@ -61,13 +98,12 @@ def _generate_payload(device: dict, request_cnt: int, commandByte: str, data: di
             cipher = AESCipher(_encode_localkey(device['localkey']))
             json_payload = cipher.encrypt(json_payload, False)
             cipher = None
-            if commandByte != '0a':
+            if command != DP_QUERY:
                 # add the 3.3 header
                 json_payload = b'3.3' + \
                     b"\0\0\0\0\0\0\0\0\0\0\0\0" + json_payload   
 
-        postfix_payload = hex2bin(
-            bin2hex(json_payload) + "000000000000aa55")
+        postfix_payload = hex2bin(bin2hex(json_payload) + "000000000000aa55")
 
         assert len(postfix_payload) <= 0xff
         # TODO this assumes a single byte 0-255 (0x00-0xff)
@@ -76,134 +112,65 @@ def _generate_payload(device: dict, request_cnt: int, commandByte: str, data: di
         
         buffer = hex2bin( '000055aa' + 
                         bin2hex(request_cnt.to_bytes(2, byteorder='big')) + 
-                        '0000000000' +
-                        commandByte +
-                        '000000' +
+                        '0000000000' + commandByte + '000000' +
                         postfix_payload_hex_len) + postfix_payload
 
         # calc the CRC of everything except where the CRC goes and the suffix
         hex_crc = format(binascii.crc32(buffer[:-8]) & 0xffffffff, '08X')
-        buffer = buffer[:-8] + hex2bin(hex_crc) + buffer[-4:]
-        
-        return buffer
+        return buffer[:-8] + hex2bin(hex_crc) + buffer[-4:]   
+
 
 def _encode_localkey(localkey: str):
 
     return localkey.encode('latin1')
 
 
-def on_connect():
-
-    pass
-
-
-def _process_contole_result(localkey: str, data: bytes):  # 07 / 7
-
-    pass
-
-
-def _process_status_result(localkey: str, data: bytes):  # 08 / 8
-
-    cipher = AESCipher(localkey)
-    result = cipher.decrypt(data[15:], False)
-    return result
-
-
-def _process_heartbeat_result(localkey: str, data: bytes):  # 09 / 9
-
-    pass
-
-
-def _process_query_result(localkey: str,  data: bytes):  # 0a / 10
-    
-    cipher = AESCipher(localkey)
-    result = cipher.decrypt(data, False)
-    return result
-
-
-def _process_contole_new_result(localkey: str, data: bytes):  # 0d / 13
-
-    pass
-
-
-def _process_query_new_result(localkey: str, data: bytes):  # 10 / 16
-
-    cipher = AESCipher(localkey)
-    result = cipher.decrypt(data, False)
-    return result
-
-def _process_raw_reply(device: dict, raw_reply: bytes):
-       
-    a = BitArray(raw_reply)   
-    processed_replies = []     
+def _process_raw_reply(device: dict, raw_reply: bytes):       
+   
+    a = BitArray(raw_reply)       
+ 
     localkey = _encode_localkey(device['localkey'])
     
     for s in a.split('0x55aa', bytealigned=True):
         sbytes = s.tobytes()
         
         if sbytes[:2] == b'\x55\xaa':
-            count = int.from_bytes(sbytes[3:4], byteorder='little')
+            # count = int.from_bytes(sbytes[3:4], byteorder='little')
             cmd = int.from_bytes(sbytes[9:10], byteorder='little')
-            lendata = int.from_bytes(sbytes[13:14], byteorder='little')
-            dataend = 14+(lendata-8)
-            data = sbytes[18:dataend]
-            if cmd == 7:
-                _process_contole_result(localkey, data)
-            elif cmd == 8:
-                processed_replies.append(_process_status_result(localkey, data))
-            elif cmd == 9:
-                _process_heartbeat_result(localkey, data)
-            elif cmd == 10:
-                processed_replies.append(_process_query_result(localkey, data))
-            elif cmd == 13:
-                _process_contole_new_result(localkey, data)
-            elif cmd == 16:
-                processed_replies.append(_process_query_new_result(localkey, data))
+            
+            if cmd in [STATUS, DP_QUERY, DP_QUERY_NEW]:
+                cipher = AESCipher(localkey)      
+                data = sbytes[18:6+int.from_bytes(sbytes[13:14], byteorder='little')]
+                if cmd == STATUS:
+                    data = data[15:]
+                yield cipher.decrypt(data, False)
     
-    return processed_replies
+
+def _select_reply(replies: list, reply:str = None):
+
+    if not replies:
+        return reply
+
+    if replies[0] != 'json obj data unvalid':        
+        return _select_reply(replies[1:], replies[0])
+    return _select_reply(replies[1:], reply)
 
 
-def _process_raw_replies(device: dict, raw_replies: list):
-
-    replies = []
-    for raw_reply in raw_replies:
-        for processed_reply in _process_raw_reply(device, raw_reply):
-            replies.append(processed_reply)        
-
-    return replies
-
-
-def _select_reply(replies: list):
-
-    for reply in replies:
-        if reply != 'json obj data unvalid':
-            return reply 
-    return None
-
-
-def _status(tuyaconnection, device: dict, cmd: str = '0a', expect_reply: int = 1, recurse_cnt: int = 0):    
+def _status(tuyaconnection, device: dict, cmd: int = DP_QUERY, expect_reply: int = 1, recurse_cnt: int = 0):    
+    
+    replies = list(reply for reply in tuyaconnection.send_request(cmd, None, expect_reply))  
         
-    reply = _select_reply(
-        _process_raw_replies(
-            device, 
-            tuyaconnection.send_request(
-                cmd, 
-                None,
-                expect_reply
-            )
-        )
-    )
-
+    reply = _select_reply(replies)
+    # print(device['ip'],reply,replies )
     if reply == None and recurse_cnt < 5:
         recurse_cnt += 1
-        reply = _status(tuyaconnection, device, '0d', 2, recurse_cnt)
+        reply = _status(tuyaconnection, device, CONTROL_NEW, 2, recurse_cnt)
     return reply
 
 
 def status(tuyaconnection, device: dict):
-
-    reply = _status(tuyaconnection, device)
     
+    reply = _status(tuyaconnection, device)    
     if reply == None:
         return reply
     return json.loads(reply)
@@ -211,23 +178,16 @@ def status(tuyaconnection, device: dict):
 
 def set_status(tuyaconnection, device: dict, dps: int, value: bool):
 
-    reply = _select_reply(
-        _process_raw_replies(
-            device, 
-            tuyaconnection.send_request(
-                '07', 
-                {str(dps): value}, 
-                2
-            )
-        )
-    )
-
+    replies = list(reply for reply in tuyaconnection.send_request(CONTROL, {str(dps): value}, 2)) 
+    
+    reply = _select_reply(replies)
     if reply == None:
         return reply
     return json.loads(reply)
 
+
 #TuyaConnection
-def printstats(self, device: dict, stats: dict, connected: bool):
+def printstats(device: dict, stats: dict, connected: bool):
        
         print("host %s connected %s, resets %d, refused %d, brokenpipe %d, os %d, failed %d, receive %d, time delta %f" %(
             device['ip'],
@@ -256,8 +216,7 @@ class TuyaConnection:
             'connection_failed_cnt': 0,
             'connection_refused_error_cnt': 0, 
             'connection_brokenpipe_error_cnt': 0, 
-            'connection_os_error_cnt': 0, 
-            'connection_failed_cnt': 0,       
+            'connection_os_error_cnt': 0,      
             'connection_time': time.time()
         }
 
@@ -295,18 +254,18 @@ class TuyaConnection:
             if sleep > 300:
                 sleep = 300
             print('Failed to connect to %s. Retry in %d seconds' % (device['ip'], sleep))
-            time.sleep(sleep) 
+            time.sleep(sleep)    
+    
 
-   
-    def send_request(self, commandByte: str='0a', payload: dict = None, max_receive_cnt: int = 1):
+    def send_request(self, command: int=DP_QUERY, payload: dict = None, max_receive_cnt: int = 1):
 
         self.stats['request_cnt'] += 1
         device = self.device
-        request = _generate_payload(device, self.stats['request_cnt'], commandByte, payload)
+        request = _generate_payload(device, self.stats['request_cnt'], command, payload)
 
         self.stats['receive_cnt'] = 0
         request_sent = False
-        raw_replies = []
+      
         ipaddress = device['ip']
 
         while self.stats['receive_cnt'] < max_receive_cnt:
@@ -319,12 +278,13 @@ class TuyaConnection:
                     self.s.send(request)
                     request_sent = True
                 except Exception as e:
-                    return raw_replies
+                    break
           
             try:
                 self.stats['receive_cnt'] += 1   
                 data = self.s.recv(4096) 
-                raw_replies.append(data)
+                for reply in _process_raw_reply(device, data):
+                    yield reply
 
             except socket.timeout as e:
                 pass
@@ -359,7 +319,7 @@ class TuyaConnection:
                 self.stats['connection_os_error_cnt'] > 20:
                 self._disconnect()
                 print('Too many errors, break', ipaddress)
-                return raw_replies
+                break
        
             time.sleep(0.1)
-        return raw_replies
+    
