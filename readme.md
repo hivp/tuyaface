@@ -6,6 +6,7 @@ Rewritten tuya client based on pytuya. Used by https://github.com/TradeFace/tuya
 
 Todo
 ==================
+- security vulnerability detected in pycrypto <= 2.6.1
 - add support for older devices back in 
 - move TuyaConnection class to separate file
 - move other functions back to init
@@ -13,6 +14,7 @@ Todo
 
 Changelog
 ==================
+- declassified aescipher
 - moved to a more functional programming style
 - yield and list comprehensions
 - setup.py
