@@ -8,12 +8,12 @@ Todo
 ==================
 - security vulnerability detected in pycrypto <= 2.6.1
 - add support for older devices back in 
-- move TuyaConnection class to separate file
-- move other functions back to init
 - we'll see
 
 Changelog
 ==================
+- moved functions back to init
+- removed TuyaConnection class, use send_request in try/except
 - declassified aescipher
 - moved to a more functional programming style
 - yield and list comprehensions
