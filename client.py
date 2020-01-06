@@ -4,12 +4,9 @@ import socket
 import json
 from bitstring import BitArray
 import binascii
-#for reduce
-# import functools
 
 from tuya.aescipher import AESCipher
 from tuya.helper import *
-
 
 UDP = 0
 AP_CONFIG = 1
@@ -43,7 +40,6 @@ LAN_REMOVE_GW = 249
 LAN_CHECK_GW_UPDATE = 250
 LAN_GW_UPDATE = 251
 LAN_SET_GW_CHANNEL = 252
-
    
 def _generate_json_data(device_id: str, commandByte: str, data: dict):
 
