@@ -12,6 +12,7 @@ Todo
 
 Changelog
 ==================
+- solved recursion problem in send_request
 - moved functions back to init
 - removed TuyaConnection class, use send_request in try/except
 - declassified aescipher

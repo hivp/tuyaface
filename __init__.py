@@ -166,6 +166,7 @@ def set_status(device: dict, dps: int, value: bool):
     replies = list(reply for reply in send_request(device, CONTROL, {str(dps): value}, 2)) 
     
     reply = _select_reply(replies)
+    # print(device['ip'],reply,replies)
     if reply == None:
         return reply
     return json.loads(reply)
@@ -187,7 +188,7 @@ def _connect(device: dict, timeout:int = 5):
     return connection  
 
 def send_request(device, command: int = DP_QUERY, payload: dict = None, max_receive_cnt: int = 1):
-           
+    
     if max_receive_cnt <= 0:
         return        
 
@@ -204,8 +205,8 @@ def send_request(device, command: int = DP_QUERY, payload: dict = None, max_rece
             raise e
 
     try:
-        data = connection.recv(4096) 
-        for reply in _process_raw_reply(device, data):
+        data = connection.recv(4096)         
+        for reply in _process_raw_reply(device, data):            
             yield reply
         
     except socket.timeout as e:
@@ -214,5 +215,5 @@ def send_request(device, command: int = DP_QUERY, payload: dict = None, max_rece
         # print('Exception', device['ip'], e)   
         raise e
     connection.close()
-
-    send_request(-1, None, max_receive_cnt -1)
+   
+    yield from send_request(device, -1, None, max_receive_cnt-1)
