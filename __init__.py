@@ -43,8 +43,9 @@ LAN_REMOVE_GW = 249
 LAN_CHECK_GW_UPDATE = 250
 LAN_GW_UPDATE = 251
 LAN_SET_GW_CHANNEL = 252
+
    
-def _generate_json_data(device_id: str, command_str_hex: str, data: dict):
+def _generate_json_data(device_id: str, command_hs: str, data: dict):
 
     payload_dict = {        
     
@@ -56,7 +57,7 @@ def _generate_json_data(device_id: str, command_str_hex: str, data: dict):
         "10": {"devId": "", "uid": "", "t": ""},          
     }
 
-    json_data = payload_dict[command_str_hex]
+    json_data = payload_dict[command_hs]
 
     if 'gwId' in json_data:
         json_data['gwId'] = device_id
@@ -67,7 +68,7 @@ def _generate_json_data(device_id: str, command_str_hex: str, data: dict):
     if 't' in json_data:
         json_data['t'] = str(int(time.time()))
 
-    if command_str_hex == '0D':
+    if command_hs == '0D':
         json_data['dps'] = {"1": None, "2": None, "3": None}
     if data is not None:
         json_data['dps'] = data
@@ -86,34 +87,36 @@ def _generate_payload(device: dict, request_cnt: int, command: int, data: dict=N
             This is what will be passed via the 'dps' entry
     """
 
-    command_str_hex = "{0:0{1}X}".format(command,2)   
+    request_cnt_hs = "{0:0{1}X}".format(request_cnt, 4)
+    command_hs = "{0:0{1}X}".format(command,2)       
     
-    json_payload = _generate_json_data(
-        device['id'], command_str_hex, data
+    payload_json = _generate_json_data(
+        device['deviceid'], command_hs, data
     ).replace(' ', '').encode('utf-8')
 
-    if device['protocol'] == '3.3':
-        # expect to connect and then disconnect to set new        
-        json_payload = aescipher.encrypt(device['localkey'], json_payload, False)
+    if device['protocol'] != '3.3':
+        return
         
-        if command != DP_QUERY:
-            # add the 3.3 header
-            json_payload = b'3.3' +  b"\0\0\0\0\0\0\0\0\0\0\0\0" + json_payload   
+    header_payload = b''
+    if command != DP_QUERY:
+        # add the 3.3 header
+        header_payload = b'3.3' +  b"\0\0\0\0\0\0\0\0\0\0\0\0"
 
-    postfix_payload = hex2bin(bin2hex(json_payload) + "000000000000aa55")
+    # expect to connect and then disconnect to set new        
+    payload_bytes = header_payload + aescipher.encrypt(device['localkey'], payload_json, False)
+        
+    payload_hb = payload_bytes + hex2bytes("000000000000aa55")
 
-    assert len(postfix_payload) <= 0xff
+    assert len(payload_hb) <= 0xff
     # TODO this assumes a single byte 0-255 (0x00-0xff)
-    postfix_payload_hex_len = '%x' % len(postfix_payload)    
-    request_str_hex = "{0:0{1}X}".format(request_cnt, 4)
+    payload_hb_len_hs = '%x' % len(payload_hb)    
     
-    buffer = hex2bin( '000055aa' + request_str_hex + 
-                    '0000000000' + command_str_hex + '000000' +
-                    postfix_payload_hex_len) + postfix_payload
+    header_hs = '000055aa' + request_cnt_hs +  '0000000000' + command_hs + '000000' + payload_hb_len_hs
+    buffer = hex2bytes( header_hs ) + payload_hb
 
     # calc the CRC of everything except where the CRC goes and the suffix
     hex_crc = format(binascii.crc32(buffer[:-8]) & 0xffffffff, '08X')
-    return buffer[:-8] + hex2bin(hex_crc) + buffer[-4:]   
+    return buffer[:-8] + hex2bytes(hex_crc) + buffer[-4:]   
 
 
 def _process_raw_reply(device: dict, raw_reply: bytes):       
@@ -129,11 +132,11 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
             data = sbytes[20:8+int.from_bytes(sbytes[15:16], byteorder='little')]
             if cmd == STATUS:
                 data = data[15:]
-            yield  aescipher.decrypt(device['localkey'], data, False)
+            yield aescipher.decrypt(device['localkey'], data, False)
     
 
 def _select_reply(replies: list, reply:str = None):
-
+    #TODO: use filter
     if not replies:
         return reply
 
