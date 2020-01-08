@@ -6,7 +6,6 @@ Rewritten tuya client based on pytuya. Used by https://github.com/TradeFace/tuya
 
 Todo
 ==================
-- security vulnerability detected in pycrypto <= 2.6.1
 - add support for older devices back in 
 - we'll see
 

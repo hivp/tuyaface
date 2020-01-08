@@ -96,7 +96,7 @@ def _generate_payload(device: dict, request_cnt: int, command: int, data: dict=N
 
     if device['protocol'] != '3.3':
         return
-        
+
     header_payload = b''
     if command != DP_QUERY:
         # add the 3.3 header
@@ -174,14 +174,14 @@ def set_status(device: dict, dps: int, value: bool):
         return reply
     return json.loads(reply)
 
-def _connect(device: dict, timeout:int = 5):
+def _connect(device: dict, timeout:int = 1):
 
     connection = None
 
     try:
         connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        connection.settimeout(timeout)
+        connection.settimeout(5)
         connection.connect((device['ip'], 6668))        
     except Exception as e:
         print('Failed to connect to %s. Retry in %d seconds' % (device['ip'], 1)) 
@@ -190,33 +190,35 @@ def _connect(device: dict, timeout:int = 5):
 
     return connection  
 
-def send_request(device, command: int = DP_QUERY, payload: dict = None, max_receive_cnt: int = 1):
+def send_request(device, command: int = DP_QUERY, payload: dict = None, max_receive_cnt: int = 1, connection = None):
     
     if max_receive_cnt <= 0:
+        # connection.close()
         return        
 
-    connection = _connect(device)
+    
     if not connection:
-        return                
+        connection = _connect(device)           
 
     if command >= 0:        
         request = _generate_payload(device, 0, command, payload)
         try:
             connection.send(request)                  
         except Exception as e:
-            connection.close()
+            # connection.close()
             raise e
 
+    # recursion_cnt = max_receive_cnt
     try:
-        data = connection.recv(4096)         
+        data = connection.recv(4096)  
+            
         for reply in _process_raw_reply(device, data):            
             yield reply
-        
+        recursion_cnt = max_receive_cnt-1   
     except socket.timeout as e:
         pass    
     except Exception as e:
         # print('Exception', device['ip'], e)   
-        raise e
-    connection.close()
-   
-    yield from send_request(device, -1, None, max_receive_cnt-1)
+        raise e    
+    # connection.close()
+    yield from send_request(device, -1, None, max_receive_cnt-1, connection)
