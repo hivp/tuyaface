@@ -1,4 +1,4 @@
-version_tuple = (1, 0, 2)
+version_tuple = (1, 0, 3)
 version = version_string = __version__ = '%d.%d.%d' % version_tuple
 __author__ = 'tradeface'
 
@@ -47,6 +47,10 @@ LAN_SET_GW_CHANNEL = 252
    
 def _generate_json_data(device_id: str, command_hs: str, data: dict):
 
+    """
+    Fill the data structure for the command with the given values
+    """
+
     payload_dict = {        
     
         "07": {"devId": "", "uid": "", "t": ""}, 
@@ -94,16 +98,27 @@ def _generate_payload(device: dict, request_cnt: int, command: int, data: dict=N
         device['deviceid'], command_hs, data
     ).replace(' ', '').encode('utf-8')
 
-    if device['protocol'] != '3.3':
-        return
-
     header_payload = b''
-    if command != DP_QUERY:
-        # add the 3.3 header
-        header_payload = b'3.3' +  b"\0\0\0\0\0\0\0\0\0\0\0\0"
+    if device['protocol'] == '3.1':
+        
+        if command == CONTROL:
+            payload_json = aescipher.encrypt(device['localkey'], payload_json)
+            preMd5String = b'data=' + payload_json + b'||lpv=' +  b'3.1||' + device['localkey']
+            m = md5()
+            m.update(preMd5String)
+            hexdigest = m.hexdigest()
+            payload_bytes = b'3.1' + hexdigest[8:][:16].encode('latin1') + payload_json
 
-    # expect to connect and then disconnect to set new        
-    payload_bytes = header_payload + aescipher.encrypt(device['localkey'], payload_json, False)
+    elif device['protocol'] == '3.3':   
+
+        if command != DP_QUERY:
+            # add the 3.3 header
+            header_payload = b'3.3' +  b"\0\0\0\0\0\0\0\0\0\0\0\0"
+
+        payload_bytes = header_payload + aescipher.encrypt(device['localkey'], payload_json, False)
+    else:
+        return
+    
         
     payload_hb = payload_bytes + hex2bytes("000000000000aa55")
 
@@ -150,7 +165,6 @@ def _status(device: dict, cmd: int = DP_QUERY, expect_reply: int = 1, recurse_cn
     replies = list(reply for reply in send_request(device, cmd, None, expect_reply))  
         
     reply = _select_reply(replies)
-    # print(device['ip'],reply,replies)
     if reply == None and recurse_cnt < 5:    
         reply = _status(device, CONTROL_NEW, 2, recurse_cnt + 1)
     return reply
@@ -169,19 +183,18 @@ def set_status(device: dict, dps: int, value: bool):
     replies = list(reply for reply in send_request(device, CONTROL, {str(dps): value}, 2)) 
     
     reply = _select_reply(replies)
-    # print(device['ip'],reply,replies)
     if reply == None:
         return reply
     return json.loads(reply)
 
-def _connect(device: dict, timeout:int = 1):
+def _connect(device: dict, timeout:int = 5):
 
     connection = None
 
     try:
         connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        connection.settimeout(5)
+        connection.settimeout(timeout)
         connection.connect((device['ip'], 6668))        
     except Exception as e:
         print('Failed to connect to %s. Retry in %d seconds' % (device['ip'], 1)) 
@@ -193,7 +206,6 @@ def _connect(device: dict, timeout:int = 1):
 def send_request(device, command: int = DP_QUERY, payload: dict = None, max_receive_cnt: int = 1, connection = None):
     
     if max_receive_cnt <= 0:
-        # connection.close()
         return        
 
     
@@ -205,20 +217,16 @@ def send_request(device, command: int = DP_QUERY, payload: dict = None, max_rece
         try:
             connection.send(request)                  
         except Exception as e:
-            # connection.close()
             raise e
 
-    # recursion_cnt = max_receive_cnt
     try:
         data = connection.recv(4096)  
             
         for reply in _process_raw_reply(device, data):            
             yield reply
-        recursion_cnt = max_receive_cnt-1   
     except socket.timeout as e:
         pass    
     except Exception as e:
         # print('Exception', device['ip'], e)   
         raise e    
-    # connection.close()
     yield from send_request(device, -1, None, max_receive_cnt-1, connection)

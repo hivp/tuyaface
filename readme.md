@@ -6,11 +6,11 @@ Rewritten tuya client based on pytuya. Used by https://github.com/TradeFace/tuya
 
 Todo
 ==================
-- add support for older devices back in 
-- we'll see
+- split _generate_payload function to a readable format
 
 Changelog
 ==================
+- add support for older devices back in (untested, please report back)
 - solved recursion problem in send_request
 - moved functions back to init
 - removed TuyaConnection class, use send_request in try/except
