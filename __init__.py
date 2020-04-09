@@ -7,6 +7,7 @@ import socket
 import json
 from bitstring import BitArray
 import binascii
+from hashlib import md5
 
 from tuya import aescipher
 from tuya.helper import *
@@ -90,48 +91,56 @@ def _generate_payload(device: dict, request_cnt: int, command: int, data: dict=N
         data(dict, optional): The data to be send.
             This is what will be passed via the 'dps' entry
     """
-
-    request_cnt_hs = "{0:0{1}X}".format(request_cnt, 4)
-    command_hs = "{0:0{1}X}".format(command,2)       
     
     payload_json = _generate_json_data(
         device['deviceid'], command_hs, data
     ).replace(' ', '').encode('utf-8')
+    
+    header_payload_hb = b''
+    payload_hb = payload_json
 
-    header_payload = b''
     if device['protocol'] == '3.1':
         
         if command == CONTROL:
-            payload_json = aescipher.encrypt(device['localkey'], payload_json)
-            preMd5String = b'data=' + payload_json + b'||lpv=' +  b'3.1||' + device['localkey']
+            payload_crypt = aescipher.encrypt(device['localkey'], payload_json)
+            preMd5String = b'data=' + payload_crypt + b'||lpv=' +  b'3.1||' + device['localkey']
             m = md5()
             m.update(preMd5String)
             hexdigest = m.hexdigest()
-            payload_bytes = b'3.1' + hexdigest[8:][:16].encode('latin1') + payload_json
+
+            header_payload_hb = b'3.1' + hexdigest[8:][:16].encode('latin1')
+            payload_hb =  header_payload_hb + payload_crypt
 
     elif device['protocol'] == '3.3':   
-
+        
         if command != DP_QUERY:
             # add the 3.3 header
-            header_payload = b'3.3' +  b"\0\0\0\0\0\0\0\0\0\0\0\0"
+            header_payload_hb = b'3.3' +  b"\0\0\0\0\0\0\0\0\0\0\0\0"
 
-        payload_bytes = header_payload + aescipher.encrypt(device['localkey'], payload_json, False)
+        payload_crypt = aescipher.encrypt(device['localkey'], payload_json, False)
+        payload_hb = header_payload_hb + payload_crypt
     else:
         return
+
+    return _stitch_payload(payload_hb, request_cnt, command)
     
-        
-    payload_hb = payload_bytes + hex2bytes("000000000000aa55")
+def _stitch_payload(payload_hb, request_cnt: int, command: int)    
+
+    request_cnt_hs = "{0:0{1}X}".format(request_cnt, 4)
+    command_hs = "{0:0{1}X}".format(command,2) 
+
+    payload_hb = payload_hb + hex2bytes("000000000000aa55")
 
     assert len(payload_hb) <= 0xff
     # TODO this assumes a single byte 0-255 (0x00-0xff)
     payload_hb_len_hs = '%x' % len(payload_hb)    
     
-    header_hs = '000055aa' + request_cnt_hs +  '0000000000' + command_hs + '000000' + payload_hb_len_hs
-    buffer = hex2bytes( header_hs ) + payload_hb
+    header_hb = hex2bytes('000055aa' + request_cnt_hs +  '0000000000' + command_hs + '000000' + payload_hb_len_hs)
+    buffer_hb = header_hb + payload_hb
 
     # calc the CRC of everything except where the CRC goes and the suffix
-    hex_crc = format(binascii.crc32(buffer[:-8]) & 0xffffffff, '08X')
-    return buffer[:-8] + hex2bytes(hex_crc) + buffer[-4:]   
+    hex_crc = format(binascii.crc32(buffer_hb[:-8]) & 0xffffffff, '08X')
+    return buffer_hb[:-8] + hex2bytes(hex_crc) + buffer_hb[-4:]   
 
 
 def _process_raw_reply(device: dict, raw_reply: bytes):       
