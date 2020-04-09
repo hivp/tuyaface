@@ -124,7 +124,7 @@ def _generate_payload(device: dict, request_cnt: int, command: int, data: dict=N
 
     return _stitch_payload(payload_hb, request_cnt, command)
     
-def _stitch_payload(payload_hb, request_cnt: int, command: int)    
+def _stitch_payload(payload_hb, request_cnt: int, command: int):    
 
     request_cnt_hs = "{0:0{1}X}".format(request_cnt, 4)
     command_hs = "{0:0{1}X}".format(command,2) 
