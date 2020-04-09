@@ -91,7 +91,8 @@ def _generate_payload(device: dict, request_cnt: int, command: int, data: dict=N
         data(dict, optional): The data to be send.
             This is what will be passed via the 'dps' entry
     """
-    
+    command_hs = "{0:0{1}X}".format(command,2) 
+
     payload_json = _generate_json_data(
         device['deviceid'], command_hs, data
     ).replace(' ', '').encode('utf-8')
@@ -122,12 +123,12 @@ def _generate_payload(device: dict, request_cnt: int, command: int, data: dict=N
     else:
         return
 
-    return _stitch_payload(payload_hb, request_cnt, command)
+    return _stitch_payload(payload_hb, request_cnt, command_hs)
     
-def _stitch_payload(payload_hb, request_cnt: int, command: int):    
+def _stitch_payload(payload_hb, request_cnt: int, command_hs):    
 
     request_cnt_hs = "{0:0{1}X}".format(request_cnt, 4)
-    command_hs = "{0:0{1}X}".format(command,2) 
+    
 
     payload_hb = payload_hb + hex2bytes("000000000000aa55")
 
