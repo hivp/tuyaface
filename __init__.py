@@ -151,20 +151,24 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
     for s in a.split('0x000055aa', bytealigned=True):
         sbytes = s.tobytes()
         cmd = int.from_bytes(sbytes[11:12], byteorder='little')
-        print(cmd)
-        print(bytes2hex(sbytes))
-        print(sbytes[20:23])
-        if sbytes[20:23] == b'3.1':
-            print('we\'ve got a 3.1 reply')
-            if cmd in [STATUS, DP_QUERY, DP_QUERY_NEW]:
-                
-                # data = sbytes[20:8+int.from_bytes(sbytes[15:16], byteorder='little')]
-                # if cmd == STATUS:
-                #     data = data[15:]
-                # yield aescipher.decrypt(device['localkey'], data)
-                continue
+        
+        if device['protocol'] == '3.1':
+            print(cmd)
+            print(bytes2hex(sbytes))
+            print(sbytes[20:23])
+            data = sbytes[20:-8]
+            if sbytes[20:21] == b'{':                
+                if not isinstance(data, str):
+                    data = data.decode()
+                yield data
+            elif sbytes[20:23] == b'3.1':
+                print('we\'ve got a 3.1 reply')
+                # if cmd in [STATUS, DP_QUERY, DP_QUERY_NEW]:                   
+                data = data[3:]  # remove version header
+                data = data[16:]  # remove (what I'm guessing, but not confirmed is) 16-bytes of MD5 hexdigest of payload
+                yield aescipher.decrypt(device['localkey'], data)
 
-        else:
+        elif device['protocol'] == '3.3':
             #assume we got a 3.3 reply
             if cmd in [STATUS, DP_QUERY, DP_QUERY_NEW]:
                 
