@@ -160,13 +160,16 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
             if sbytes[20:21] == b'{':                
                 if not isinstance(data, str):
                     data = data.decode()
+                print(data)
                 yield data
             elif sbytes[20:23] == b'3.1':
                 print('we\'ve got a 3.1 reply')
                 # if cmd in [STATUS, DP_QUERY, DP_QUERY_NEW]:                   
                 data = data[3:]  # remove version header
                 data = data[16:]  # remove (what I'm guessing, but not confirmed is) 16-bytes of MD5 hexdigest of payload
-                yield aescipher.decrypt(device['localkey'], data)
+                data_decrypt = aescipher.decrypt(device['localkey'], data)
+                print(data_decrypt)
+                yield data_decrypt
 
         elif device['protocol'] == '3.3':
             #assume we got a 3.3 reply
