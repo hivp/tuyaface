@@ -91,7 +91,8 @@ def _generate_payload(device: dict, request_cnt: int, command: int, data: dict=N
         data(dict, optional): The data to be send.
             This is what will be passed via the 'dps' entry
     """
-    
+    command_hs = "{0:0{1}X}".format(command,2) 
+
     payload_json = _generate_json_data(
         device['deviceid'], command_hs, data
     ).replace(' ', '').encode('utf-8')
@@ -122,12 +123,12 @@ def _generate_payload(device: dict, request_cnt: int, command: int, data: dict=N
     else:
         return
 
-    return _stitch_payload(payload_hb, request_cnt, command)
+    return _stitch_payload(payload_hb, request_cnt, command_hs)
     
-def _stitch_payload(payload_hb, request_cnt: int, command: int):    
+def _stitch_payload(payload_hb, request_cnt: int, command_hs):    
 
     request_cnt_hs = "{0:0{1}X}".format(request_cnt, 4)
-    command_hs = "{0:0{1}X}".format(command,2) 
+    
 
     payload_hb = payload_hb + hex2bytes("000000000000aa55")
 
@@ -150,13 +151,27 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
     for s in a.split('0x000055aa', bytealigned=True):
         sbytes = s.tobytes()
         cmd = int.from_bytes(sbytes[11:12], byteorder='little')
-        
-        if cmd in [STATUS, DP_QUERY, DP_QUERY_NEW]:
-            
-            data = sbytes[20:8+int.from_bytes(sbytes[15:16], byteorder='little')]
-            if cmd == STATUS:
-                data = data[15:]
-            yield aescipher.decrypt(device['localkey'], data, False)
+        print(cmd)
+        print(bytes2hex(sbytes))
+        print(sbytes[20:23])
+        if sbytes[20:23] == b'3.1':
+            print('we\'ve got a 3.1 reply')
+            if cmd in [STATUS, DP_QUERY, DP_QUERY_NEW]:
+                
+                # data = sbytes[20:8+int.from_bytes(sbytes[15:16], byteorder='little')]
+                # if cmd == STATUS:
+                #     data = data[15:]
+                # yield aescipher.decrypt(device['localkey'], data)
+                continue
+
+        else:
+            #assume we got a 3.3 reply
+            if cmd in [STATUS, DP_QUERY, DP_QUERY_NEW]:
+                
+                data = sbytes[20:8+int.from_bytes(sbytes[15:16], byteorder='little')]
+                if cmd == STATUS:
+                    data = data[15:]
+                yield aescipher.decrypt(device['localkey'], data, False)
     
 
 def _select_reply(replies: list, reply:str = None):
