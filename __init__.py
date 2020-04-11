@@ -1,4 +1,4 @@
-version_tuple = (1, 0, 3)
+version_tuple = (1, 0, 4)
 version = version_string = __version__ = '%d.%d.%d' % version_tuple
 __author__ = 'tradeface'
 
@@ -147,34 +147,25 @@ def _stitch_payload(payload_hb, request_cnt: int, command_hs):
 def _process_raw_reply(device: dict, raw_reply: bytes):          
    
     a = BitArray(raw_reply)  
-    # print(device)  
-    # print(raw_reply)
+
     for s in a.split('0x000055aa', bytealigned=True):
         sbytes = s.tobytes()
         cmd = int.from_bytes(sbytes[11:12], byteorder='little')
         
         if device['protocol'] == '3.1':
-            # print(cmd)
-            # print(bytes2hex(sbytes))
-            # print(sbytes[20:21])
             data = sbytes[20:-8]
             if sbytes[20:21] == b'{':                
                 if not isinstance(data, str):
                     data = data.decode()
-                # print(data)
-                # print('yielding')
                 yield data
             elif sbytes[20:23] == b'3.1':
-                print('we\'ve got a 3.1 reply, code untested')
-                # if cmd in [STATUS, DP_QUERY, DP_QUERY_NEW]:                   
+                print('we\'ve got a 3.1 reply, code untested')                   
                 data = data[3:]  # remove version header
                 data = data[16:]  # remove (what I'm guessing, but not confirmed is) 16-bytes of MD5 hexdigest of payload
                 data_decrypt = aescipher.decrypt(device['localkey'], data)
-                # print(data_decrypt)
                 yield data_decrypt
 
         elif device['protocol'] == '3.3':
-            #assume we got a 3.3 reply
             if cmd in [STATUS, DP_QUERY, DP_QUERY_NEW]:
                 
                 data = sbytes[20:8+int.from_bytes(sbytes[15:16], byteorder='little')]
@@ -241,13 +232,6 @@ def send_request(device, command: int = DP_QUERY, payload: dict = None, max_rece
     if max_receive_cnt <= 0:
         return        
 
-    #debug 3.1
-    # if device['ip'] == '192.168.1.143':
-    #     data = hex2bytes('000055AA000000000000000A00000097000000007B226465764964223A223036323030323930623465363264313935613432222C22647073223A7B2231223A66616C73652C22313032223A3232352C22313033223A302C22313034223A37302C22313035223A38372C22313036223A39322C22313037223A302C22313039223A66616C73652C22313130223A66616C73652C22313131223A66616C73657D7D1DFD33BA0000AA55')
-    #     for reply in _process_raw_reply(device, data):            
-    #         yield reply        
-    #     return
-
     if not connection:
         connection = _connect(device)           
 
@@ -265,7 +249,6 @@ def send_request(device, command: int = DP_QUERY, payload: dict = None, max_rece
             yield reply
     except socket.timeout as e:
         pass    
-    except Exception as e:
-        # print('Exception', device['ip'], e)   
+    except Exception as e: 
         raise e    
     yield from send_request(device, -1, None, max_receive_cnt-1, connection)
