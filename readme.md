@@ -6,10 +6,11 @@ Rewritten tuya client based on pytuya. Used by https://github.com/TradeFace/tuya
 
 Todo
 ==================
-- split _generate_payload function to a readable format
+
 
 Changelog
 ==================
+- split _generate_payload function to a readable format
 - add support for older devices back in (untested, please report back)
 - solved recursion problem in send_request
 - moved functions back to init
@@ -24,3 +25,4 @@ Acknowledgements
 =================
 - This module is a rewrite of https://github.com/clach04/python-tuya
 - https://github.com/codetheweb/tuyapi as reference on commands 
+- https://github.com/SDNick484 for testing protocol 3.1 reimplementation
