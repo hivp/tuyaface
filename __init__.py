@@ -1,4 +1,4 @@
-version_tuple = (1, 0, 3)
+version_tuple = (1, 0, 4)
 version = version_string = __version__ = '%d.%d.%d' % version_tuple
 __author__ = 'tradeface'
 
@@ -144,32 +144,28 @@ def _stitch_payload(payload_hb, request_cnt: int, command_hs):
     return buffer_hb[:-8] + hex2bytes(hex_crc) + buffer_hb[-4:]   
 
 
-def _process_raw_reply(device: dict, raw_reply: bytes):       
+def _process_raw_reply(device: dict, raw_reply: bytes):          
    
-    a = BitArray(raw_reply)    
-    
+    a = BitArray(raw_reply)  
+
     for s in a.split('0x000055aa', bytealigned=True):
         sbytes = s.tobytes()
         cmd = int.from_bytes(sbytes[11:12], byteorder='little')
         
         if device['protocol'] == '3.1':
-            print(cmd)
-            print(bytes2hex(sbytes))
-            print(sbytes[20:23])
             data = sbytes[20:-8]
             if sbytes[20:21] == b'{':                
                 if not isinstance(data, str):
                     data = data.decode()
                 yield data
             elif sbytes[20:23] == b'3.1':
-                print('we\'ve got a 3.1 reply')
-                # if cmd in [STATUS, DP_QUERY, DP_QUERY_NEW]:                   
+                print('we\'ve got a 3.1 reply, code untested')                   
                 data = data[3:]  # remove version header
                 data = data[16:]  # remove (what I'm guessing, but not confirmed is) 16-bytes of MD5 hexdigest of payload
-                yield aescipher.decrypt(device['localkey'], data)
+                data_decrypt = aescipher.decrypt(device['localkey'], data)
+                yield data_decrypt
 
         elif device['protocol'] == '3.3':
-            #assume we got a 3.3 reply
             if cmd in [STATUS, DP_QUERY, DP_QUERY_NEW]:
                 
                 data = sbytes[20:8+int.from_bytes(sbytes[15:16], byteorder='little')]
@@ -202,7 +198,7 @@ def status(device: dict):
     
     reply = _status(device)    
     if reply == None:
-        return reply
+        return reply   
     return json.loads(reply)
 
 
@@ -236,7 +232,6 @@ def send_request(device, command: int = DP_QUERY, payload: dict = None, max_rece
     if max_receive_cnt <= 0:
         return        
 
-    
     if not connection:
         connection = _connect(device)           
 
@@ -254,7 +249,6 @@ def send_request(device, command: int = DP_QUERY, payload: dict = None, max_rece
             yield reply
     except socket.timeout as e:
         pass    
-    except Exception as e:
-        # print('Exception', device['ip'], e)   
+    except Exception as e: 
         raise e    
     yield from send_request(device, -1, None, max_receive_cnt-1, connection)
