@@ -5,7 +5,10 @@ __author__ = 'tradeface'
 import time
 import socket
 import json
-from bitstring import BitArray
+try:
+    from bitstring import BitArray
+except ImportError:
+    print("**Please install bitstring**")
 import binascii
 from hashlib import md5
 
