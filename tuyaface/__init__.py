@@ -1,4 +1,4 @@
-version_tuple = (1, 0, 4)
+version_tuple = (1, 0, 5)
 version = version_string = __version__ = '%d.%d.%d' % version_tuple
 __author__ = 'tradeface'
 
@@ -9,8 +9,8 @@ from bitstring import BitArray
 import binascii
 from hashlib import md5
 
-from tuya import aescipher
-from tuya.helper import *
+from tuyaface import aescipher
+from tuyaface.helper import *
 
 UDP = 0
 AP_CONFIG = 1

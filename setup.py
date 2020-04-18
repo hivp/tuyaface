@@ -6,7 +6,7 @@ try:
 except ImportError:
     from distutils.core import setup
 
-import tuya
+import tuyaface
 
 
 if len(sys.argv) <= 1:
@@ -31,20 +31,20 @@ else:
 
 
 setup(
-    name='tuya',
-    author=tuya.__author__,
-    version=tuya.__version__,
+    name='tuyaface',
+    author=tuyaface.__author__,
+    version=tuyaface.__version__,
     description='Python interface to Tuya WiFi smart devices.',
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/TradeFace/tuya/',
     author_email='',
-    license='MIT',
+    license='Unlicense',
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'Topic :: Home Automation',
-        'License :: OSI Approved :: MIT License',
+        'License :: OSI Approved :: Unlicense',
         'Programming Language :: Python',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 3',
@@ -52,9 +52,11 @@ setup(
         'Topic :: Home Automation',
     ],
     keywords='home automation, tuya',
-    packages=['tuya'],
+    packages=['tuyaface'],
     platforms='any',
     install_requires=[
           'pyaes',  # NOTE this is optional, AES can be provided via PyCrypto or PyCryptodome
-      ],
+          'pycrypto',
+          'bitstring',
+    ],
 )
