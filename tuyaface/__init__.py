@@ -5,12 +5,19 @@ __author__ = 'tradeface'
 import time
 import socket
 import json
-from bitstring import BitArray
+try:
+    from bitstring import BitArray
+except ImportError:
+    print("**Please install bitstring**")
 import binascii
 from hashlib import md5
 
 from tuyaface import aescipher
 from tuyaface.helper import *
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 UDP = 0
 AP_CONFIG = 1
@@ -159,7 +166,7 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
                     data = data.decode()
                 yield data
             elif sbytes[20:23] == b'3.1':
-                print('we\'ve got a 3.1 reply, code untested')                   
+                logger.info('we\'ve got a 3.1 reply, code untested')                   
                 data = data[3:]  # remove version header
                 data = data[16:]  # remove (what I'm guessing, but not confirmed is) 16-bytes of MD5 hexdigest of payload
                 data_decrypt = aescipher.decrypt(device['localkey'], data)
@@ -189,39 +196,48 @@ def _status(device: dict, cmd: int = DP_QUERY, expect_reply: int = 1, recurse_cn
     replies = list(reply for reply in send_request(device, cmd, None, expect_reply))  
         
     reply = _select_reply(replies)
-    if reply == None and recurse_cnt < 5:    
+    if reply == None and recurse_cnt < 5:
+        # some devices (ie LSC Bulbs) only offer partial status with CONTROL_NEW instead of DP_QUERY
         reply = _status(device, CONTROL_NEW, 2, recurse_cnt + 1)
     return reply
 
 
 def status(device: dict):
     
-    reply = _status(device)    
+    reply = _status(device)
+    logger.debug("reply: %s",reply)    
     if reply == None:
         return reply   
     return json.loads(reply)
 
 
-def set_status(device: dict, dps: int, value: bool):
-
-    replies = list(reply for reply in send_request(device, CONTROL, {str(dps): value}, 2)) 
+def set_status(device: dict, dps: dict):
+    tmp = { str(k):v for k,v in dps.items() }
+    replies = list(reply for reply in send_request(device, CONTROL, tmp, 2)) 
     
     reply = _select_reply(replies)
     if reply == None:
         return reply
     return json.loads(reply)
 
+
+def set_state(device: dict, value: bool,idx: int = 1):
+    # turn a device on / off
+    return set_status(device,{idx: value})
+
+
 def _connect(device: dict, timeout:int = 5):
 
     connection = None
 
+    logger.debug('Connecting to %s' % device['ip'])
     try:
         connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         connection.settimeout(timeout)
         connection.connect((device['ip'], 6668))        
     except Exception as e:
-        print('Failed to connect to %s. Retry in %d seconds' % (device['ip'], 1)) 
+        logger.warning('Failed to connect to %s. Retry in %d seconds' % (device['ip'], 1)) 
         connection = None    
         raise e   
 
@@ -237,6 +253,7 @@ def send_request(device, command: int = DP_QUERY, payload: dict = None, max_rece
 
     if command >= 0:        
         request = _generate_payload(device, 0, command, payload)
+        logger.debug("sending command: [%s] payload: [%s]" % (command,payload))
         try:
             connection.send(request)                  
         except Exception as e:
