@@ -223,7 +223,7 @@ def set_status(device: dict, dps: dict):
 
 def set_state(device: dict, value: bool,idx: int = 1):
     # turn a device on / off
-    return set_status(device,{str(idx): value})
+    return set_status(device,{idx: value})
 
 
 def _connect(device: dict, timeout:int = 5):
