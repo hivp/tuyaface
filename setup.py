@@ -22,7 +22,7 @@ PyPi:
 
 here = os.path.abspath(os.path.dirname(__file__))
 
-readme_filename = os.path.join(here, 'README.md')
+readme_filename = os.path.join(here, 'readme.md')
 if os.path.exists(readme_filename):
     with codecs.open(readme_filename, encoding='utf-8') as f:
         long_description = f.read()
@@ -44,7 +44,7 @@ setup(
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'Topic :: Home Automation',
-        'License :: OSI Approved :: Unlicense',
+        'License :: Public Domain',
         'Programming Language :: Python',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 3',

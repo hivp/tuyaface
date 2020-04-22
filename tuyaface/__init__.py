@@ -1,4 +1,4 @@
-version_tuple = (1, 0, 5)
+version_tuple = (1, 1, 0)
 version = version_string = __version__ = '%d.%d.%d' % version_tuple
 __author__ = 'tradeface'
 
@@ -134,8 +134,7 @@ def _generate_payload(device: dict, request_cnt: int, command: int, data: dict=N
     
 def _stitch_payload(payload_hb, request_cnt: int, command_hs):    
 
-    request_cnt_hs = "{0:0{1}X}".format(request_cnt, 4)
-    
+    request_cnt_hs = "{0:0{1}X}".format(request_cnt, 4)    
 
     payload_hb = payload_hb + hex2bytes("000000000000aa55")
 
