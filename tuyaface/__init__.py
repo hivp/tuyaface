@@ -196,7 +196,8 @@ def _status(device: dict, cmd: int = DP_QUERY, expect_reply: int = 1, recurse_cn
     replies = list(reply for reply in send_request(device, cmd, None, expect_reply))  
         
     reply = _select_reply(replies)
-    if reply == None and recurse_cnt < 5:    
+    if reply == None and recurse_cnt < 5:
+        # some devices (ie LSC Bulbs) only offer partial status with CONTROL_NEW instead of DP_QUERY
         reply = _status(device, CONTROL_NEW, 2, recurse_cnt + 1)
     return reply
 
@@ -210,14 +211,20 @@ def status(device: dict):
     return json.loads(reply)
 
 
-def set_status(device: dict, dps: int, value: bool):
-
-    replies = list(reply for reply in send_request(device, CONTROL, {str(dps): value}, 2)) 
+def set_status(device: dict, dps: dict):
+    tmp = { str(k):v for k,v in dps.items() }
+    replies = list(reply for reply in send_request(device, CONTROL, tmp, 2)) 
     
     reply = _select_reply(replies)
     if reply == None:
         return reply
     return json.loads(reply)
+
+
+def set_state(device: dict, value: bool,idx: int = 1):
+    # turn a device on / off
+    return set_status(device,{str(idx): value})
+
 
 def _connect(device: dict, timeout:int = 5):
 
@@ -246,6 +253,7 @@ def send_request(device, command: int = DP_QUERY, payload: dict = None, max_rece
 
     if command >= 0:        
         request = _generate_payload(device, 0, command, payload)
+        logger.debug("sending command: [%s] payload: [%s]" % (command,payload))
         try:
             connection.send(request)                  
         except Exception as e:
