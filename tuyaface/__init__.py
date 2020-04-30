@@ -1,4 +1,4 @@
-version_tuple = (1, 1, 0)
+version_tuple = (1, 1, 1)
 version = version_string = __version__ = '%d.%d.%d' % version_tuple
 __author__ = 'tradeface'
 
@@ -98,7 +98,7 @@ def _generate_payload(device: dict, request_cnt: int, command: int, data: dict=N
         data(dict, optional): The data to be send.
             This is what will be passed via the 'dps' entry
     """
-    command_hs = "{0:0{1}X}".format(command,2) 
+    command_hs = "{0:0{1}X}".format(command, 2) 
 
     payload_json = _generate_json_data(
         device['deviceid'], command_hs, data
@@ -220,7 +220,7 @@ def set_status(device: dict, dps: dict):
     return json.loads(reply)
 
 
-def set_state(device: dict, value: bool,idx: int = 1):
+def set_state(device: dict, value: bool, idx: int = 1):
     # turn a device on / off
     return set_status(device,{idx: value})
 

@@ -1,36 +1,70 @@
-Tuya
+TuyaFace
 ===================
 
-Rewritten tuya client based on pytuya. Used by https://github.com/TradeFace/tuyamqtt
+Tuya client that allows you to locally communicate with tuya devices __without__ the tuya-cloud.
 
-Public Interfaces
+Installation
+================
+```
+pip install tuyaface
+```
+or
+```
+pip install tuyaface==1.1.0
+```
+
+Public Interface
 ==================
 
-Request device status
+__Request device status__
 ```
 status(device: dict)
 Returns json string
 ```
 
-Change device state
+__Change device state__
 ```
-set_state(device: dict, value: bool,idx: int = 1)
+set_state(device: dict, value: bool, idx: int = 1)
 Returns json string
 ```
 
-Change device status
+__Change device status__
 ```
 set_status(device: dict, dps: dict)
 Returns json string
 ```
 
+__Device dict__
+```
+device = {
+    'protocol': '3.3', # 3.1 | 3.3
+    'deviceid': '34280100600194d17c96',
+    'localkey': 'e7e9339aa82abe61',
+    'ip': '192.168.1.101',            
+}
+```
+__DPS dict__
+```
+dps = {
+    '1': 0,
+    '103' 255,
+    ...etc...
+}
+```
+
 
 Todo
 ==================
-
+- replace pycrypto with pycryptodome
+- move constants to separate file
+- _stitch_payload type casting
+- _select_reply use filter
 
 Changelog
 ==================
+*v1.1.1*
+- better description pub interface
+
 *v1.1.0* Breaking
 - function set_status was added
 - functionname set_status was changed to set_state
@@ -47,6 +81,11 @@ Changelog
 - yield and list comprehensions
 - setup.py
 - removed code for older devices < 3.3 
+
+Implementations
+================
+- https://github.com/TradeFace/tuyamqtt
+- _let me know, I'll add it here_
 
 Acknowledgements
 =================
