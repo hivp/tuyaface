@@ -55,7 +55,6 @@ dps = {
 
 Todo
 ==================
-- replace pycrypto with pycryptodome
 - move constants to separate file
 - _stitch_payload type casting
 - _select_reply use filter
@@ -64,6 +63,7 @@ Changelog
 ==================
 *v1.1.1*
 - better description pub interface
+- replace pycrypto with pycryptodome
 
 *v1.1.0* Breaking
 - function set_status was added
