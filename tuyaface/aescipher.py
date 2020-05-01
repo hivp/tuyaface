@@ -1,11 +1,10 @@
 
 import base64
 try:
-    #raise ImportError
-    import Crypto
-    from Crypto.Cipher import AES  # PyCrypto
+    import Cryptodome
+    from Cryptodome.Cipher import AES  # PyCrypto
 except ImportError:
-    Crypto = AES = None
+    Cryptodome = AES = None
     import pyaes  # https://github.com/ricmoo/pyaes
 
 
@@ -13,7 +12,7 @@ def encrypt(key, raw, use_base64=True):
     
     key = key.encode('latin1')
 
-    if Crypto:
+    if Cryptodome:
         raw = _pad(raw)
         cipher = AES.new(key, mode=AES.MODE_ECB)
         crypted_text = cipher.encrypt(raw)
@@ -37,7 +36,7 @@ def decrypt(key, enc, use_base64=True):
         enc = base64.b64decode(enc)
     # print('enc (%d) %r %s ->%s<-' % (len(enc), enc, type(self.key), self.key))
     
-    if Crypto:
+    if Cryptodome:
         cipher = AES.new(key, AES.MODE_ECB)
         raw = cipher.decrypt(enc)
         return _unpad(raw).decode('utf-8')

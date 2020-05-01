@@ -1,4 +1,4 @@
-version_tuple = (1, 1, 0)
+version_tuple = (1, 1, 2)
 version = version_string = __version__ = '%d.%d.%d' % version_tuple
 __author__ = 'tradeface'
 
@@ -13,44 +13,14 @@ import binascii
 from hashlib import md5
 
 from tuyaface import aescipher
+from tuyaface import const as tf
 from tuyaface.helper import *
 
 import logging
 
 logger = logging.getLogger(__name__)
 
-UDP = 0
-AP_CONFIG = 1
-ACTIVE = 2
-BIND = 3
-RENAME_GW = 4
-RENAME_DEVICE = 5
-UNBIND = 6
-CONTROL = 7
-STATUS = 8
-HEART_BEAT = 9
-DP_QUERY = 10
-QUERY_WIFI = 11
-TOKEN_BIND = 12
-CONTROL_NEW = 13
-ENABLE_WIFI = 14
-DP_QUERY_NEW = 16
-SCENE_EXECUTE = 17
-UDP_NEW = 19
-AP_CONFIG_NEW = 20
-LAN_GW_ACTIVE = 240
-LAN_SUB_DEV_REQUEST = 241
-LAN_DELETE_SUB_DEV = 242
-LAN_REPORT_SUB_DEV = 243
-LAN_SCENE = 244
-LAN_PUBLISH_CLOUD_CONFIG = 245
-LAN_PUBLISH_APP_CONFIG = 246
-LAN_EXPORT_APP_CONFIG = 247
-LAN_PUBLISH_SCENE_PANEL = 248
-LAN_REMOVE_GW = 249
-LAN_CHECK_GW_UPDATE = 250
-LAN_GW_UPDATE = 251
-LAN_SET_GW_CHANNEL = 252
+
 
    
 def _generate_json_data(device_id: str, command_hs: str, data: dict):
@@ -98,7 +68,7 @@ def _generate_payload(device: dict, request_cnt: int, command: int, data: dict=N
         data(dict, optional): The data to be send.
             This is what will be passed via the 'dps' entry
     """
-    command_hs = "{0:0{1}X}".format(command,2) 
+    command_hs = "{0:0{1}X}".format(command, 2) 
 
     payload_json = _generate_json_data(
         device['deviceid'], command_hs, data
@@ -109,7 +79,7 @@ def _generate_payload(device: dict, request_cnt: int, command: int, data: dict=N
 
     if device['protocol'] == '3.1':
         
-        if command == CONTROL:
+        if command == tf.CONTROL:
             payload_crypt = aescipher.encrypt(device['localkey'], payload_json)
             preMd5String = b'data=' + payload_crypt + b'||lpv=' +  b'3.1||' + device['localkey']
             m = md5()
@@ -121,7 +91,7 @@ def _generate_payload(device: dict, request_cnt: int, command: int, data: dict=N
 
     elif device['protocol'] == '3.3':   
         
-        if command != DP_QUERY:
+        if command != tf.DP_QUERY:
             # add the 3.3 header
             header_payload_hb = b'3.3' +  b"\0\0\0\0\0\0\0\0\0\0\0\0"
 
@@ -132,7 +102,7 @@ def _generate_payload(device: dict, request_cnt: int, command: int, data: dict=N
 
     return _stitch_payload(payload_hb, request_cnt, command_hs)
     
-def _stitch_payload(payload_hb, request_cnt: int, command_hs):    
+def _stitch_payload(payload_hb: bytes, request_cnt: int, command_hs: str):    
 
     request_cnt_hs = "{0:0{1}X}".format(request_cnt, 4)    
 
@@ -172,10 +142,10 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
                 yield data_decrypt
 
         elif device['protocol'] == '3.3':
-            if cmd in [STATUS, DP_QUERY, DP_QUERY_NEW]:
+            if cmd in [tf.STATUS, tf.DP_QUERY, tf.DP_QUERY_NEW]:
                 
                 data = sbytes[20:8+int.from_bytes(sbytes[15:16], byteorder='little')]
-                if cmd == STATUS:
+                if cmd == tf.STATUS:
                     data = data[15:]
                 yield aescipher.decrypt(device['localkey'], data, False)
     
@@ -190,14 +160,14 @@ def _select_reply(replies: list, reply:str = None):
     return _select_reply(replies[1:], reply)
 
 
-def _status(device: dict, cmd: int = DP_QUERY, expect_reply: int = 1, recurse_cnt: int = 0):    
+def _status(device: dict, cmd: int = tf.DP_QUERY, expect_reply: int = 1, recurse_cnt: int = 0):    
     
     replies = list(reply for reply in send_request(device, cmd, None, expect_reply))  
         
     reply = _select_reply(replies)
     if reply == None and recurse_cnt < 5:
         # some devices (ie LSC Bulbs) only offer partial status with CONTROL_NEW instead of DP_QUERY
-        reply = _status(device, CONTROL_NEW, 2, recurse_cnt + 1)
+        reply = _status(device, tf.CONTROL_NEW, 2, recurse_cnt + 1)
     return reply
 
 
@@ -212,7 +182,7 @@ def status(device: dict):
 
 def set_status(device: dict, dps: dict):
     tmp = { str(k):v for k,v in dps.items() }
-    replies = list(reply for reply in send_request(device, CONTROL, tmp, 2)) 
+    replies = list(reply for reply in send_request(device, tf.CONTROL, tmp, 2)) 
     
     reply = _select_reply(replies)
     if reply == None:
@@ -220,7 +190,7 @@ def set_status(device: dict, dps: dict):
     return json.loads(reply)
 
 
-def set_state(device: dict, value: bool,idx: int = 1):
+def set_state(device: dict, value: bool, idx: int = 1):
     # turn a device on / off
     return set_status(device,{idx: value})
 
@@ -242,7 +212,7 @@ def _connect(device: dict, timeout:int = 5):
 
     return connection  
 
-def send_request(device, command: int = DP_QUERY, payload: dict = None, max_receive_cnt: int = 1, connection = None):
+def send_request(device, command: int = tf.DP_QUERY, payload: dict = None, max_receive_cnt: int = 1, connection = None):
     
     if max_receive_cnt <= 0:
         return        
