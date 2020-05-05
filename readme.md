@@ -55,11 +55,15 @@ dps = {
 
 Todo
 ==================
-
-- _select_reply use filter
+- use const in _generate_json_data
+- 
 
 Changelog
 ==================
+*v1.1.3*
+- _select_reply use filter (fix #20?)
+- corrected setup.py
+
 *v1.1.2*
 - moved constants to separate file
 - _stitch_payload type casting

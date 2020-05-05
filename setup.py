@@ -56,7 +56,7 @@ setup(
     platforms='any',
     install_requires=[
           'pyaes',  # NOTE this is optional, AES can be provided via PyCrypto or PyCryptodome
-          'pycrypto',
+          'pycryptodome',
           'bitstring',
     ],
 )

@@ -1,4 +1,4 @@
-version_tuple = (1, 1, 2)
+version_tuple = (1, 1, 3)
 version = version_string = __version__ = '%d.%d.%d' % version_tuple
 __author__ = 'tradeface'
 
@@ -150,21 +150,19 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
                 yield aescipher.decrypt(device['localkey'], data, False)
     
 
-def _select_reply(replies: list, reply:str = None):
-    #TODO: use filter
-    if not replies:
-        return reply
-
-    if replies[0] != 'json obj data unvalid':        
-        return _select_reply(replies[1:], replies[0])
-    return _select_reply(replies[1:], reply)
+def _select_reply(replies: list):
+  
+    filtered_replies = list(filter(lambda x: x != 'json obj data unvalid', replies))
+    if len(filtered_replies) == 0:
+        return None
+    return filtered_replies[0]
 
 
 def _status(device: dict, cmd: int = tf.DP_QUERY, expect_reply: int = 1, recurse_cnt: int = 0):    
     
-    replies = list(reply for reply in send_request(device, cmd, None, expect_reply))  
-        
-    reply = _select_reply(replies)
+    replies = list(reply for reply in send_request(device, cmd, None, expect_reply)) 
+
+    reply = _select_reply(replies)   
     if reply == None and recurse_cnt < 5:
         # some devices (ie LSC Bulbs) only offer partial status with CONTROL_NEW instead of DP_QUERY
         reply = _status(device, tf.CONTROL_NEW, 2, recurse_cnt + 1)
