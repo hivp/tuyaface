@@ -152,7 +152,7 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
 
 def _select_reply(replies: list):
   
-    filtered_replies = list(filter(lambda x: x != 'json obj data unvalid', replies))
+    filtered_replies = list(filter(lambda x: x != b'json obj data unvalid', replies))
     if len(filtered_replies) == 0:
         return None
     return filtered_replies[0]
@@ -173,7 +173,7 @@ def status(device: dict):
     
     reply = _status(device)
     logger.debug("reply: %s", reply)    
-    if reply == None or reply == '':
+    if reply == None:
         return None 
     return json.loads(reply)
 
@@ -184,7 +184,7 @@ def set_status(device: dict, dps: dict):
     
     reply = _select_reply(replies)
     logger.debug("reply: %s", reply) 
-    if reply == None or reply == '':
+    if reply == None:
         return None
     return json.loads(reply)
 
