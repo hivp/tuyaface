@@ -1,4 +1,4 @@
-version_tuple = (1, 1, 2)
+version_tuple = (1, 1, 4)
 version = version_string = __version__ = '%d.%d.%d' % version_tuple
 __author__ = 'tradeface'
 
@@ -19,8 +19,6 @@ from tuyaface.helper import *
 import logging
 
 logger = logging.getLogger(__name__)
-
-
 
    
 def _generate_json_data(device_id: str, command_hs: str, data: dict):
@@ -101,6 +99,7 @@ def _generate_payload(device: dict, request_cnt: int, command: int, data: dict=N
         return
 
     return _stitch_payload(payload_hb, request_cnt, command_hs)
+
     
 def _stitch_payload(payload_hb: bytes, request_cnt: int, command_hs: str):    
 
@@ -150,21 +149,19 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
                 yield aescipher.decrypt(device['localkey'], data, False)
     
 
-def _select_reply(replies: list, reply:str = None):
-    #TODO: use filter
-    if not replies:
-        return reply
-
-    if replies[0] != 'json obj data unvalid':        
-        return _select_reply(replies[1:], replies[0])
-    return _select_reply(replies[1:], reply)
+def _select_reply(replies: list):
+  
+    filtered_replies = list(filter(lambda x: x != b'json obj data unvalid', replies))
+    if len(filtered_replies) == 0:
+        return None
+    return filtered_replies[0]
 
 
 def _status(device: dict, cmd: int = tf.DP_QUERY, expect_reply: int = 1, recurse_cnt: int = 0):    
     
-    replies = list(reply for reply in send_request(device, cmd, None, expect_reply))  
-        
-    reply = _select_reply(replies)
+    replies = list(reply for reply in send_request(device, cmd, None, expect_reply)) 
+
+    reply = _select_reply(replies)   
     if reply == None and recurse_cnt < 5:
         # some devices (ie LSC Bulbs) only offer partial status with CONTROL_NEW instead of DP_QUERY
         reply = _status(device, tf.CONTROL_NEW, 2, recurse_cnt + 1)
@@ -174,9 +171,9 @@ def _status(device: dict, cmd: int = tf.DP_QUERY, expect_reply: int = 1, recurse
 def status(device: dict):
     
     reply = _status(device)
-    logger.debug("reply: %s",reply)    
+    logger.debug("reply: %s", reply)    
     if reply == None:
-        return reply   
+        return None 
     return json.loads(reply)
 
 
@@ -185,8 +182,9 @@ def set_status(device: dict, dps: dict):
     replies = list(reply for reply in send_request(device, tf.CONTROL, tmp, 2)) 
     
     reply = _select_reply(replies)
+    logger.debug("reply: %s", reply) 
     if reply == None:
-        return reply
+        return None
     return json.loads(reply)
 
 
@@ -210,9 +208,10 @@ def _connect(device: dict, timeout:int = 5):
         connection = None    
         raise e   
 
-    return connection  
+    return connection
 
-def send_request(device, command: int = tf.DP_QUERY, payload: dict = None, max_receive_cnt: int = 1, connection = None):
+
+def send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None, max_receive_cnt: int = 1, connection = None):
     
     if max_receive_cnt <= 0:
         return        

@@ -55,11 +55,18 @@ dps = {
 
 Todo
 ==================
-
-- _select_reply use filter
+- use const in _generate_json_data- 
 
 Changelog
 ==================
+*v1.1.4*
+- _select_reply use filter correction
+
+*v1.1.3*
+- _select_reply use filter (fix #20?)
+- added check for empty string replies 
+- corrected setup.py
+
 *v1.1.2*
 - moved constants to separate file
 - _stitch_payload type casting
@@ -67,7 +74,6 @@ Changelog
 *v1.1.1*
 - better description pub interface
 - replaced pycrypto with pycryptodome
-
 
 *v1.1.0* Breaking
 - function set_status was added
@@ -97,3 +103,4 @@ Acknowledgements
 - https://github.com/codetheweb/tuyapi as reference on commands 
 - https://github.com/SDNick484 for testing protocol 3.1 reimplementation
 - https://github.com/jkerdreux-imt several improvements
+- https://github.com/PortableProgrammer help on #20
