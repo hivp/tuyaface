@@ -1,4 +1,4 @@
-version_tuple = (1, 1, 3)
+version_tuple = (1, 1, 4)
 version = version_string = __version__ = '%d.%d.%d' % version_tuple
 __author__ = 'tradeface'
 
@@ -19,8 +19,6 @@ from tuyaface.helper import *
 import logging
 
 logger = logging.getLogger(__name__)
-
-
 
    
 def _generate_json_data(device_id: str, command_hs: str, data: dict):
@@ -101,6 +99,7 @@ def _generate_payload(device: dict, request_cnt: int, command: int, data: dict=N
         return
 
     return _stitch_payload(payload_hb, request_cnt, command_hs)
+
     
 def _stitch_payload(payload_hb: bytes, request_cnt: int, command_hs: str):    
 
@@ -209,7 +208,8 @@ def _connect(device: dict, timeout:int = 5):
         connection = None    
         raise e   
 
-    return connection  
+    return connection
+
 
 def send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None, max_receive_cnt: int = 1, connection = None):
     

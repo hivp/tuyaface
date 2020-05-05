@@ -55,11 +55,13 @@ dps = {
 
 Todo
 ==================
-- use const in _generate_json_data
-- 
+- use const in _generate_json_data- 
 
 Changelog
 ==================
+*v1.1.4*
+- _select_reply use filter correction
+
 *v1.1.3*
 - _select_reply use filter (fix #20?)
 - added check for empty string replies 
@@ -72,7 +74,6 @@ Changelog
 *v1.1.1*
 - better description pub interface
 - replaced pycrypto with pycryptodome
-
 
 *v1.1.0* Breaking
 - function set_status was added
