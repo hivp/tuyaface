@@ -172,9 +172,9 @@ def _status(device: dict, cmd: int = tf.DP_QUERY, expect_reply: int = 1, recurse
 def status(device: dict):
     
     reply = _status(device)
-    logger.debug("reply: %s",reply)    
-    if reply == None:
-        return reply   
+    logger.debug("reply: %s", reply)    
+    if reply == None or reply == '':
+        return None 
     return json.loads(reply)
 
 
@@ -183,8 +183,9 @@ def set_status(device: dict, dps: dict):
     replies = list(reply for reply in send_request(device, tf.CONTROL, tmp, 2)) 
     
     reply = _select_reply(replies)
-    if reply == None:
-        return reply
+    logger.debug("reply: %s", reply) 
+    if reply == None or reply == '':
+        return None
     return json.loads(reply)
 
 
@@ -210,7 +211,7 @@ def _connect(device: dict, timeout:int = 5):
 
     return connection  
 
-def send_request(device, command: int = tf.DP_QUERY, payload: dict = None, max_receive_cnt: int = 1, connection = None):
+def send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None, max_receive_cnt: int = 1, connection = None):
     
     if max_receive_cnt <= 0:
         return        

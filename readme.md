@@ -62,6 +62,7 @@ Changelog
 ==================
 *v1.1.3*
 - _select_reply use filter (fix #20?)
+- added check for empty string replies 
 - corrected setup.py
 
 *v1.1.2*
@@ -101,3 +102,4 @@ Acknowledgements
 - https://github.com/codetheweb/tuyapi as reference on commands 
 - https://github.com/SDNick484 for testing protocol 3.1 reimplementation
 - https://github.com/jkerdreux-imt several improvements
+- https://github.com/PortableProgrammer help on #20
