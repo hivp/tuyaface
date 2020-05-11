@@ -54,8 +54,7 @@ setup(
     keywords='home automation, tuya',
     packages=['tuyaface'],
     platforms='any',
-    install_requires=[
-          'pyaes',  # NOTE this is optional, AES can be provided via PyCrypto or PyCryptodome
+    install_requires=[      
           'pycryptodome',
           'bitstring',
     ],

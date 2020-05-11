@@ -55,6 +55,9 @@ Todo
 
 Changelog
 ==================
+*v1.1.6*
+- removed pyaes
+
 *v1.1.5*
 - fix #24
 - additional condition on #20
