@@ -1,5 +1,5 @@
 import base64
-from Cryptodome.Cipher import AES  
+from Crypto.Cipher import AES  
 
 def encrypt(key, raw, use_base64=True):
     
