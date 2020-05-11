@@ -57,6 +57,7 @@ Changelog
 ==================
 *v1.1.6*
 - removed pyaes
+- revert #20
 
 *v1.1.5*
 - fix #24
