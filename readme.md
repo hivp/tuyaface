@@ -57,6 +57,7 @@ Todo
 Changelog
 ==================
 *v1.1.6*
+- as per #27
 - clean up _connect
 - always return json (now json or None)
 - removed pyaes
