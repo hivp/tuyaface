@@ -160,7 +160,7 @@ def _status(device: dict, cmd: int = tf.DP_QUERY, expect_reply: int = 1, recurse
     replies = list(reply for reply in send_request(device, cmd, None, expect_reply)) 
 
     reply = _select_reply(replies)   
-    if reply == None and recurse_cnt < 5:
+    if reply == None and recurse_cnt < 3:
         # some devices (ie LSC Bulbs) only offer partial status with CONTROL_NEW instead of DP_QUERY
         reply = _status(device, tf.CONTROL_NEW, 2, recurse_cnt + 1)    
     return reply
@@ -171,7 +171,7 @@ def status(device: dict):
     reply = _status(device)
     logger.debug("reply: %s", reply)    
     if reply == None:
-        return None 
+        reply = {}
     return json.loads(reply)
 
 
@@ -182,7 +182,7 @@ def set_status(device: dict, dps: dict):
     reply = _select_reply(replies)
     logger.debug("reply: %s", reply) 
     if reply == None:
-        return None
+        reply = {}
     return json.loads(reply)
 
 
@@ -191,7 +191,7 @@ def set_state(device: dict, value: bool, idx: int = 1):
     return set_status(device,{idx: value})
 
 
-def _connect(device: dict, timeout:int = 5):
+def _connect(device: dict, timeout:int = 2):
 
     connection = None
 
@@ -200,13 +200,11 @@ def _connect(device: dict, timeout:int = 5):
         connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         connection.settimeout(timeout)
-        connection.connect((device['ip'], 6668))        
+        connection.connect((device['ip'], 6668)) 
+        return connection       
     except Exception as e:
-        logger.warning('Failed to connect to %s. Retry in %d seconds' % (device['ip'], 1)) 
-        connection = None    
-        raise e   
-
-    return connection
+        logger.warning('Failed to connect to %s. Retry in %d seconds' % (device['ip'], 1))         
+        raise e       
 
 
 def send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None, max_receive_cnt: int = 1, connection = None):

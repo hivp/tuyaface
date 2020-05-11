@@ -53,9 +53,12 @@ Todo
 ==================
 
 
+
 Changelog
 ==================
 *v1.1.6*
+- clean up _connect
+- always return json (now json or None)
 - removed pyaes
 - revert #20
 
