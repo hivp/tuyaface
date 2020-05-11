@@ -1,4 +1,4 @@
-version_tuple = (1, 1, 4)
+version_tuple = (1, 1, 5)
 version = version_string = __version__ = '%d.%d.%d' % version_tuple
 __author__ = 'tradeface'
 
@@ -21,7 +21,7 @@ import logging
 logger = logging.getLogger(__name__)
 
    
-def _generate_json_data(device_id: str, command_hs: str, data: dict):
+def _generate_json_data(device_id: str, command: int, data: dict):
 
     """
     Fill the data structure for the command with the given values
@@ -29,15 +29,15 @@ def _generate_json_data(device_id: str, command_hs: str, data: dict):
 
     payload_dict = {        
     
-        "07": {"devId": "", "uid": "", "t": ""}, 
-        "08": {"gwId": "", "devId": ""},
-        "09": {},
-        "0A": {"gwId": "", "devId": "", "uid": "", "t": ""},  
-        "0D": {"devId": "", "uid": "", "t": ""}, 
-        "10": {"devId": "", "uid": "", "t": ""},          
+        tf.CONTROL: {"devId": "", "uid": "", "t": ""}, 
+        tf.STATUS: {"gwId": "", "devId": ""},
+        tf.HEART_BEAT: {},
+        tf.DP_QUERY: {"gwId": "", "devId": "", "uid": "", "t": ""},  
+        tf.CONTROL_NEW: {"devId": "", "uid": "", "t": ""}, 
+        tf.DP_QUERY_NEW: {"devId": "", "uid": "", "t": ""},          
     }
 
-    json_data = payload_dict[command_hs]
+    json_data = payload_dict[command]
 
     if 'gwId' in json_data:
         json_data['gwId'] = device_id
@@ -48,7 +48,7 @@ def _generate_json_data(device_id: str, command_hs: str, data: dict):
     if 't' in json_data:
         json_data['t'] = str(int(time.time()))
 
-    if command_hs == '0D':
+    if command == tf.CONTROL_NEW:
         json_data['dps'] = {"1": None, "2": None, "3": None}
     if data is not None:
         json_data['dps'] = data
@@ -65,11 +65,10 @@ def _generate_payload(device: dict, request_cnt: int, command: int, data: dict=N
             This is one of the entries from payload_dict
         data(dict, optional): The data to be send.
             This is what will be passed via the 'dps' entry
-    """
-    command_hs = "{0:0{1}X}".format(command, 2) 
+    """     
 
     payload_json = _generate_json_data(
-        device['deviceid'], command_hs, data
+        device['deviceid'], command, data
     ).replace(' ', '').encode('utf-8')
     
     header_payload_hb = b''
@@ -98,11 +97,12 @@ def _generate_payload(device: dict, request_cnt: int, command: int, data: dict=N
     else:
         return
 
-    return _stitch_payload(payload_hb, request_cnt, command_hs)
+    return _stitch_payload(payload_hb, request_cnt, command)
 
     
-def _stitch_payload(payload_hb: bytes, request_cnt: int, command_hs: str):    
+def _stitch_payload(payload_hb: bytes, request_cnt: int, command: int):    
 
+    command_hs = "{0:0{1}X}".format(command, 2)
     request_cnt_hs = "{0:0{1}X}".format(request_cnt, 4)    
 
     payload_hb = payload_hb + hex2bytes("000000000000aa55")
@@ -125,7 +125,7 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
 
     for s in a.split('0x000055aa', bytealigned=True):
         sbytes = s.tobytes()
-        cmd = int.from_bytes(sbytes[11:12], byteorder='little')
+        cmd = int.from_bytes(sbytes[11:12], byteorder='big')
         
         if device['protocol'] == '3.1':
             data = sbytes[20:-8]
@@ -143,7 +143,7 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
         elif device['protocol'] == '3.3':
             if cmd in [tf.STATUS, tf.DP_QUERY, tf.DP_QUERY_NEW]:
                 
-                data = sbytes[20:8+int.from_bytes(sbytes[15:16], byteorder='little')]
+                data = sbytes[20:8+int.from_bytes(sbytes[14:16], byteorder='big')]
                 if cmd == tf.STATUS:
                     data = data[15:]
                 yield aescipher.decrypt(device['localkey'], data, False)
@@ -151,7 +151,7 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
 
 def _select_reply(replies: list):
   
-    filtered_replies = list(filter(lambda x: x != b'json obj data unvalid', replies))
+    filtered_replies = list(filter(lambda x: x != b'json obj data unvalid' and x != 'json obj data unvalid', replies))
     if len(filtered_replies) == 0:
         return None
     return filtered_replies[0]
@@ -164,7 +164,7 @@ def _status(device: dict, cmd: int = tf.DP_QUERY, expect_reply: int = 1, recurse
     reply = _select_reply(replies)   
     if reply == None and recurse_cnt < 5:
         # some devices (ie LSC Bulbs) only offer partial status with CONTROL_NEW instead of DP_QUERY
-        reply = _status(device, tf.CONTROL_NEW, 2, recurse_cnt + 1)
+        reply = _status(device, tf.CONTROL_NEW, 2, recurse_cnt + 1)    
     return reply
 
 
