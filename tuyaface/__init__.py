@@ -171,7 +171,7 @@ def status(device: dict):
     reply = _status(device)
     logger.debug("reply: %s", reply)    
     if reply == None:
-        reply = {}
+        return {}        
     return json.loads(reply)
 
 
@@ -182,7 +182,7 @@ def set_status(device: dict, dps: dict):
     reply = _select_reply(replies)
     logger.debug("reply: %s", reply) 
     if reply == None:
-        reply = {}
+        return {}        
     return json.loads(reply)
 
 

@@ -15,19 +15,19 @@ Public Interface
 __Request device status__
 ```
 status(device: dict)
-Returns json string
+Returns dict
 ```
 
 __Change device state__
 ```
 set_state(device: dict, value: bool, idx: int = 1)
-Returns json string
+Returns dict
 ```
 
 __Change device status__
 ```
 set_status(device: dict, dps: dict)
-Returns json string
+Returns dict
 ```
 
 __Device dict__
