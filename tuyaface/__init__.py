@@ -5,10 +5,8 @@ __author__ = 'tradeface'
 import time
 import socket
 import json
-try:
-    from bitstring import BitArray
-except ImportError:
-    print("**Please install bitstring**")
+from bitstring import BitArray
+
 import binascii
 from hashlib import md5
 
@@ -151,7 +149,7 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
 
 def _select_reply(replies: list):
   
-    filtered_replies = list(filter(lambda x: x != b'json obj data unvalid' and x != 'json obj data unvalid', replies))
+    filtered_replies = list(filter(lambda x: x != 'json obj data unvalid', replies))
     if len(filtered_replies) == 0:
         return None
     return filtered_replies[0]
