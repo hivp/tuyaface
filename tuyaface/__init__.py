@@ -125,7 +125,7 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
 
     for s in a.split('0x000055aa', bytealigned=True):
         sbytes = s.tobytes()
-        cmd = int.from_bytes(sbytes[11:12], byteorder='little')
+        cmd = int.from_bytes(sbytes[11:12], byteorder='big')
         
         if device['protocol'] == '3.1':
             data = sbytes[20:-8]
@@ -143,7 +143,7 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
         elif device['protocol'] == '3.3':
             if cmd in [tf.STATUS, tf.DP_QUERY, tf.DP_QUERY_NEW]:
                 
-                data = sbytes[20:8+int.from_bytes(sbytes[15:16], byteorder='little')]
+                data = sbytes[20:8+int.from_bytes(sbytes[14:16], byteorder='big')]
                 if cmd == tf.STATUS:
                     data = data[15:]
                 yield aescipher.decrypt(device['localkey'], data, False)
