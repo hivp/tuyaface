@@ -1,4 +1,4 @@
-version_tuple = (1, 1, 4)
+version_tuple = (1, 1, 5)
 version = version_string = __version__ = '%d.%d.%d' % version_tuple
 __author__ = 'tradeface'
 
