@@ -1,14 +1,13 @@
 import base64
-import Cryptodome
 from Cryptodome.Cipher import AES  
 
 def encrypt(key, raw, use_base64=True):
     
-    key_enc = key.encode('latin1')
-   
-    raw = _pad(raw)
-    cipher = AES.new(key_enc, mode=AES.MODE_ECB)
-    crypted_text = cipher.encrypt(raw)
+    cipher = AES.new(
+        key.encode('latin1'), 
+        mode=AES.MODE_ECB
+    )
+    crypted_text = cipher.encrypt(_pad(raw))
    
     if use_base64:
         return base64.b64encode(crypted_text)
@@ -16,13 +15,14 @@ def encrypt(key, raw, use_base64=True):
 
 
 def decrypt(key, enc, use_base64=True):
-
-    key_enc = key.encode('latin1')
     
     if use_base64:
         enc = base64.b64decode(enc)
    
-    cipher = AES.new(key_enc, AES.MODE_ECB)
+    cipher = AES.new(
+        key.encode('latin1'), 
+        mode=AES.MODE_ECB
+    )
     raw = cipher.decrypt(enc)
     return _unpad(raw).decode('utf-8')
     
