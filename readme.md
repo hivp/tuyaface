@@ -8,10 +8,6 @@ Installation
 ```
 pip install tuyaface
 ```
-or
-```
-pip install tuyaface==1.1.0
-```
 
 Public Interface
 ==================
