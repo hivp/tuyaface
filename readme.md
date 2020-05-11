@@ -55,10 +55,15 @@ dps = {
 
 Todo
 ==================
-- use const in _generate_json_data- 
+
 
 Changelog
 ==================
+*v1.1.5*
+- fix #24
+- additional condition on #20
+- use const in _generate_json_data 
+
 *v1.1.4*
 - _select_reply use filter correction
 
