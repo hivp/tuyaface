@@ -23,6 +23,7 @@ def _generate_json_data(device_id: str, command: int, data: dict):
 
     """
     Fill the data structure for the command with the given values
+    return: json str
     """
 
     payload_dict = {        
@@ -35,6 +36,7 @@ def _generate_json_data(device_id: str, command: int, data: dict):
         tf.DP_QUERY_NEW: {"devId": "", "uid": "", "t": ""},          
     }
 
+    #TODO: check if command exists
     json_data = payload_dict[command]
 
     if 'gwId' in json_data:
@@ -59,14 +61,18 @@ def _generate_payload(device: dict, request_cnt: int, command: int, data: dict=N
     Generate the payload to send.
 
     Args:
-        command(str): The type of command.
+        device: Device attributes
+        request_cnt: request sequence number
+        command: The type of command.
             This is one of the entries from payload_dict
-        data(dict, optional): The data to be send.
+        data: The data to be send.
             This is what will be passed via the 'dps' entry
     """     
 
     payload_json = _generate_json_data(
-        device['deviceid'], command, data
+        device['deviceid'], 
+        command, 
+        data
     ).replace(' ', '').encode('utf-8')
     
     header_payload_hb = b''
@@ -93,6 +99,7 @@ def _generate_payload(device: dict, request_cnt: int, command: int, data: dict=N
         payload_crypt = aescipher.encrypt(device['localkey'], payload_json, False)
         payload_hb = header_payload_hb + payload_crypt
     else:
+        #TODO: return something useful or raise error
         return
 
     return _stitch_payload(payload_hb, request_cnt, command)
@@ -121,6 +128,7 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
    
     a = BitArray(raw_reply)  
 
+    #TODO: don't overwrite variables
     for s in a.split('0x000055aa', bytealigned=True):
         sbytes = s.tobytes()
         cmd = int.from_bytes(sbytes[11:12], byteorder='big')
@@ -151,12 +159,17 @@ def _select_reply(replies: list):
   
     filtered_replies = list(filter(lambda x: x != 'json obj data unvalid', replies))
     if len(filtered_replies) == 0:
+        #TODO: return dict for consistency
         return None
     return filtered_replies[0]
 
 
 def _status(device: dict, cmd: int = tf.DP_QUERY, expect_reply: int = 1, recurse_cnt: int = 0):    
-    
+    """
+    Sends current status request to the tuya device
+    returns dict
+    """
+
     replies = list(reply for reply in send_request(device, cmd, None, expect_reply)) 
 
     reply = _select_reply(replies)   
@@ -167,7 +180,11 @@ def _status(device: dict, cmd: int = tf.DP_QUERY, expect_reply: int = 1, recurse
 
 
 def status(device: dict):
-    
+    """
+    Requests status of the tuya device
+    returns dict
+    """
+
     reply = _status(device)
     logger.debug("reply: %s", reply)    
     if reply == None:
@@ -176,6 +193,11 @@ def status(device: dict):
 
 
 def set_status(device: dict, dps: dict):
+    """
+    Sends status update request to the tuya device
+    returns dict
+    """
+
     tmp = { str(k):v for k,v in dps.items() }
     replies = list(reply for reply in send_request(device, tf.CONTROL, tmp, 2)) 
     
@@ -187,15 +209,25 @@ def set_status(device: dict, dps: dict):
 
 
 def set_state(device: dict, value: bool, idx: int = 1):
+    """
+    Sends status update request for one dps value to the tuya device
+    returns dict
+    """
+
     # turn a device on / off
     return set_status(device,{idx: value})
 
 
 def _connect(device: dict, timeout:int = 2):
 
+    """
+    connects to the tuya device
+    returns connection object
+    """
+
     connection = None
 
-    logger.debug('Connecting to %s' % device['ip'])
+    logger.info('Connecting to %s' % device['ip'])
     try:
         connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
@@ -215,7 +247,8 @@ def send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None,
     if not connection:
         connection = _connect(device)           
 
-    if command >= 0:        
+    if command >= 0:   
+        #TODO: solve sequence number always 0; doesn't seem to be a problem at the moment     
         request = _generate_payload(device, 0, command, payload)
         logger.debug("sending command: [%s] payload: [%s]" % (command,payload))
         try:

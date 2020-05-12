@@ -42,22 +42,25 @@ device = {
 __DPS dict__
 ```
 dps = {
-    '1': 0,
-    '103' 255,
+    '1': True,
+    '2': False,
+    '101': 255,
+    '102': 128,
     ...etc...
 }
 ```
 
 
-Todo
+Todo *v1.1.6*
 ==================
-
-
+- inline function documentation
+- fix return values
+- fix checks
 
 Changelog
 ==================
 *v1.1.6*
-- as per #27
+- as per #27 retries/max recursion
 - clean up _connect
 - always return json (now json or None)
 - removed pyaes
