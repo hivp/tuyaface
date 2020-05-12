@@ -55,7 +55,7 @@ setup(
     packages=['tuyaface'],
     platforms='any',
     install_requires=[      
-          'pycryptodome',
+          'pycryptodomex',
           'bitstring',
     ],
 )
