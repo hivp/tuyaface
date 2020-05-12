@@ -12,19 +12,19 @@ pip install tuyaface
 Public Interface
 ==================
 
-__Request device status__
+__Request current device status__
 ```
 status(device: dict)
 Returns dict
 ```
 
-__Change device state__
+__Update device dps state__
 ```
 set_state(device: dict, value: bool, idx: int = 1)
 Returns dict
 ```
 
-__Change device status__
+__Update device status__
 ```
 set_status(device: dict, dps: dict)
 Returns dict
@@ -51,15 +51,16 @@ dps = {
 ```
 
 
-Todo *v1.1.6*
+Todo 
 ==================
-- inline function documentation
-- fix return values
-- fix checks
+
 
 Changelog
 ==================
 *v1.1.6*
+- fix return values
+- fix checks
+- inline function documentation
 - as per #27 retries/max recursion
 - clean up _connect
 - always return json (now json or None)

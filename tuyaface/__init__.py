@@ -36,8 +36,9 @@ def _generate_json_data(device_id: str, command: int, data: dict):
         tf.DP_QUERY_NEW: {"devId": "", "uid": "", "t": ""},          
     }
 
-    #TODO: check if command exists
-    json_data = payload_dict[command]
+    json_data = {}
+    if command in payload_dict:
+        json_data = payload_dict[command]
 
     if 'gwId' in json_data:
         json_data['gwId'] = device_id
@@ -106,6 +107,9 @@ def _generate_payload(device: dict, request_cnt: int, command: int, data: dict=N
 
     
 def _stitch_payload(payload_hb: bytes, request_cnt: int, command: int):    
+    """
+    Joins the payload request parts together
+    """
 
     command_hs = "{0:0{1}X}".format(command, 2)
     request_cnt_hs = "{0:0{1}X}".format(request_cnt, 4)    
@@ -125,7 +129,11 @@ def _stitch_payload(payload_hb: bytes, request_cnt: int, command: int):
 
 
 def _process_raw_reply(device: dict, raw_reply: bytes):          
-   
+    """
+    Splits the raw reply(s) into chuncks and decrypts it.
+    returns json str or str (error)
+    """
+
     a = BitArray(raw_reply)  
 
     #TODO: don't overwrite variables
@@ -156,11 +164,14 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
     
 
 def _select_reply(replies: list):
-  
+    """
+    Find the first valid reply
+    returns dict
+    """
+
     filtered_replies = list(filter(lambda x: x != 'json obj data unvalid', replies))
-    if len(filtered_replies) == 0:
-        #TODO: return dict for consistency
-        return None
+    if len(filtered_replies) == 0:        
+        return {}
     return filtered_replies[0]
 
 
@@ -173,7 +184,7 @@ def _status(device: dict, cmd: int = tf.DP_QUERY, expect_reply: int = 1, recurse
     replies = list(reply for reply in send_request(device, cmd, None, expect_reply)) 
 
     reply = _select_reply(replies)   
-    if reply == None and recurse_cnt < 3:
+    if not reply and recurse_cnt < 3:
         # some devices (ie LSC Bulbs) only offer partial status with CONTROL_NEW instead of DP_QUERY
         reply = _status(device, tf.CONTROL_NEW, 2, recurse_cnt + 1)    
     return reply
@@ -186,9 +197,7 @@ def status(device: dict):
     """
 
     reply = _status(device)
-    logger.debug("reply: %s", reply)    
-    if reply == None:
-        return {}        
+    logger.debug("reply: %s", reply) 
     return json.loads(reply)
 
 
@@ -202,9 +211,7 @@ def set_status(device: dict, dps: dict):
     replies = list(reply for reply in send_request(device, tf.CONTROL, tmp, 2)) 
     
     reply = _select_reply(replies)
-    logger.debug("reply: %s", reply) 
-    if reply == None:
-        return {}        
+    logger.debug("reply: %s", reply)       
     return json.loads(reply)
 
 
@@ -240,7 +247,11 @@ def _connect(device: dict, timeout:int = 2):
 
 
 def send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None, max_receive_cnt: int = 1, connection = None):
-    
+    """
+    Connects to the tuya device and sends the request
+    returns json str or str (error)
+    """
+
     if max_receive_cnt <= 0:
         return        
 
