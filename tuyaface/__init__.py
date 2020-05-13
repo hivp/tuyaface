@@ -1,18 +1,14 @@
-
-
 import time
 import socket
 import json
 from bitstring import BitArray
-
 import binascii
 from hashlib import md5
+import logging
 
 from tuyaface import aescipher
 from tuyaface import const as tf
 from tuyaface.helper import *
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +64,7 @@ def _generate_payload(device: dict, request_cnt: int, command: int, data: dict=N
             This is what will be passed via the 'dps' entry
     """     
 
+    #TODO: don't overwrite variables
     payload_json = _generate_json_data(
         device['deviceid'], 
         command, 
@@ -164,19 +161,19 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
 def _select_reply(replies: list):
     """
     Find the first valid reply
-    returns dict
+    returns json str
     """
 
     filtered_replies = list(filter(lambda x: x != 'json obj data unvalid', replies))
     if len(filtered_replies) == 0:        
-        return {}
+        return '{}'
     return filtered_replies[0]
 
 
 def _status(device: dict, cmd: int = tf.DP_QUERY, expect_reply: int = 1, recurse_cnt: int = 0):    
     """
     Sends current status request to the tuya device
-    returns dict
+    returns json str
     """
 
     replies = list(reply for reply in send_request(device, cmd, None, expect_reply)) 
