@@ -12,22 +12,22 @@ pip install tuyaface
 Public Interface
 ==================
 
-__Request device status__
+__Request current device status__
 ```
 status(device: dict)
-Returns json string
+Returns dict
 ```
 
-__Change device state__
+__Update device dps state__
 ```
 set_state(device: dict, value: bool, idx: int = 1)
-Returns json string
+Returns dict
 ```
 
-__Change device status__
+__Update device status__
 ```
 set_status(device: dict, dps: dict)
-Returns json string
+Returns dict
 ```
 
 __Device dict__
@@ -42,19 +42,32 @@ device = {
 __DPS dict__
 ```
 dps = {
-    '1': 0,
-    '103' 255,
+    '1': True,
+    '2': False,
+    '101': 255,
+    '102': 128,
     ...etc...
 }
 ```
 
 
-Todo
+Todo 
 ==================
 
 
 Changelog
 ==================
+*v1.1.6*
+- payload protocol exception
+- fix return values
+- fix checks
+- inline function documentation
+- as per #27 retries/max recursion
+- clean up _connect
+- always return json (now json or None)
+- removed pyaes
+- revert #20
+
 *v1.1.5*
 - fix #24
 - additional condition on #20
