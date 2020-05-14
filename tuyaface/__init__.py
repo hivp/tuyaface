@@ -94,9 +94,8 @@ def _generate_payload(device: dict, request_cnt: int, command: int, data: dict=N
 
         payload_crypt = aescipher.encrypt(device['localkey'], payload_json, False)
         payload_hb = header_payload_hb + payload_crypt
-    else:
-        #TODO: return something useful or raise error
-        return
+    else:                 
+        raise Exception('Unknown protocol %s.' % (device['protocol']))            
 
     return _stitch_payload(payload_hb, request_cnt, command)
 
@@ -137,19 +136,23 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
         cmd = int.from_bytes(sbytes[11:12], byteorder='big')
         
         if device['protocol'] == '3.1':
+            
             data = sbytes[20:-8]
-            if sbytes[20:21] == b'{':                
+            if sbytes[20:21] == b'{':   
+
                 if not isinstance(data, str):
                     data = data.decode()
                 yield data
+
             elif sbytes[20:23] == b'3.1':
+
                 logger.info('we\'ve got a 3.1 reply, code untested')                   
                 data = data[3:]  # remove version header
                 data = data[16:]  # remove (what I'm guessing, but not confirmed is) 16-bytes of MD5 hexdigest of payload
-                data_decrypt = aescipher.decrypt(device['localkey'], data)
-                yield data_decrypt
+                yield aescipher.decrypt(device['localkey'], data)
 
         elif device['protocol'] == '3.3':
+
             if cmd in [tf.STATUS, tf.DP_QUERY, tf.DP_QUERY_NEW]:
                 
                 data = sbytes[20:8+int.from_bytes(sbytes[14:16], byteorder='big')]
@@ -191,6 +194,7 @@ def status(device: dict):
     returns dict
     """
 
+    #TODO: validate/sanitize request
     reply = _status(device)
     logger.debug("reply: %s", reply) 
     return json.loads(reply)
@@ -202,6 +206,7 @@ def set_status(device: dict, dps: dict):
     returns dict
     """
 
+    #TODO: validate/sanitize request
     tmp = { str(k):v for k,v in dps.items() }
     replies = list(reply for reply in send_request(device, tf.CONTROL, tmp, 2)) 
     
@@ -253,9 +258,14 @@ def send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None,
     if not connection:
         connection = _connect(device)           
 
-    if command >= 0:   
-        #TODO: solve sequence number always 0; doesn't seem to be a problem at the moment     
-        request = _generate_payload(device, 0, command, payload)
+    if command >= 0: 
+        try:   
+            #TODO: solve sequence number always 0; doesn't seem to be a problem at the moment  
+            request = _generate_payload(device, 0, command, payload)
+        except Exception as e:
+            logger.warning(e)
+            raise e
+        
         logger.debug("sending command: [%s] payload: [%s]" % (command,payload))
         try:
             connection.send(request)                  

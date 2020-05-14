@@ -58,6 +58,7 @@ Todo
 Changelog
 ==================
 *v1.1.6*
+- payload protocol exception
 - fix return values
 - fix checks
 - inline function documentation
