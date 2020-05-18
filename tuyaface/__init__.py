@@ -105,16 +105,14 @@ def _stitch_payload(payload_hb: bytes, request_cnt: int, command: int):
     Joins the payload request parts together
     """
 
-    command_hs = "{0:0{1}X}".format(command, 2)
-    request_cnt_hs = "{0:0{1}X}".format(request_cnt, 4)    
+    command_hs = command.to_bytes(4, byteorder='big')
+    request_cnt_hs = request_cnt.to_bytes(4, byteorder='big')
 
     payload_hb = payload_hb + hex2bytes("000000000000aa55")
 
-    assert len(payload_hb) <= 0xff
-    # TODO this assumes a single byte 0-255 (0x00-0xff)
-    payload_hb_len_hs = '%x' % len(payload_hb)    
+    payload_hb_len_hs = len(payload_hb).to_bytes(4, byteorder='big')
     
-    header_hb = hex2bytes('000055aa' + request_cnt_hs +  '0000000000' + command_hs + '000000' + payload_hb_len_hs)
+    header_hb = hex2bytes('000055aa') + request_cnt_hs + command_hs + payload_hb_len_hs
     buffer_hb = header_hb + payload_hb
 
     # calc the CRC of everything except where the CRC goes and the suffix
