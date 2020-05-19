@@ -6,7 +6,7 @@ try:
 except ImportError:
     from distutils.core import setup
 
-version_tuple = (1, 1, 6)
+version_tuple = (1, 1, 7)
 version = version_string = __version__ = '%d.%d.%d' % version_tuple
 __author__ = 'tradeface'
 

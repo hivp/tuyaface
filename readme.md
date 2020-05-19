@@ -51,12 +51,16 @@ dps = {
 ```
 
 
-Todo 
+Todo *v1.1.7*
 ==================
-
+- validate/sanitize request
 
 Changelog
 ==================
+*v1.1.7*
+- Correct message header generation
+- fix typo in decrypt
+
 *v1.1.6*
 - payload protocol exception
 - fix return values
@@ -118,3 +122,4 @@ Acknowledgements
 - https://github.com/SDNick484 for testing protocol 3.1 reimplementation
 - https://github.com/jkerdreux-imt several improvements
 - https://github.com/PortableProgrammer help on #20
+- https://github.com/emontnemery
