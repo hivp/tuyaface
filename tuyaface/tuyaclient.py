@@ -94,7 +94,7 @@ class TuyaClient(threading.Thread):
                             try:
                                 self.connection.close()
                             except Exception:
-                                logger.exception("TuyaClient: exception when closing socket")
+                                logger.exception("TuyaClient: exception when closing socket", exc_info=False)
                             self.queue.put((self.on_connection, False))
                             self.connection = None
                             continue
@@ -106,7 +106,7 @@ class TuyaClient(threading.Thread):
                             logger.info("TuyaClient: connected")
                             continue
                         except Exception:
-                            logger.exception("TuyaClient: exception when opening socket")
+                            logger.exception("TuyaClient: exception when opening socket", exc_info=False)
 
                     if self.connection:
                         # poll the socket, as well as the socketpair to allow us to be interrupted
@@ -125,7 +125,7 @@ class TuyaClient(threading.Thread):
                                     # If the socket is in the read list, but no data, sleep
                                     force_sleep = True
                             except socket.error:
-                                logger.exception("TuyaClient: exception when reading from socket")
+                                logger.exception("TuyaClient: exception when reading from socket", exc_info=False)
                                 self.force_reconnect = True
 
                         if self.socketpair[0] in can_read:
