@@ -133,8 +133,9 @@ class TuyaClient(threading.Thread):
             if self.connection == None:
                 self._connect()
             try:
-                status(self.device, connection=self.connection, seq=self.seq)
+                data = status(self.device, connection=self.connection, seq=self.seq)
                 self.seq += 1
+                return data
             except socket.error:
                 self.force_reconnect = True
 
@@ -143,7 +144,8 @@ class TuyaClient(threading.Thread):
             if self.connection == None:
                 self._connect()
             try:
-                set_state(self.device, value, idx, connection=self.connection, seq=self.seq)
+                data = set_state(self.device, value, idx, connection=self.connection, seq=self.seq)
                 self.seq += 1
+                return data
             except socket.error:
                 self.force_reconnect = True
