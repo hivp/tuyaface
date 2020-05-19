@@ -58,6 +58,7 @@ Todo *v1.1.7*
 Changelog
 ==================
 *v1.1.7*
+- added tuyaclient
 - Correct message header generation
 - fix typo in decrypt
 
@@ -122,4 +123,4 @@ Acknowledgements
 - https://github.com/SDNick484 for testing protocol 3.1 reimplementation
 - https://github.com/jkerdreux-imt several improvements
 - https://github.com/PortableProgrammer help on #20
-- https://github.com/emontnemery
+- https://github.com/emontnemery tuyaclient 

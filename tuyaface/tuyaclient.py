@@ -14,8 +14,10 @@ HEART_BEAT_PING_TIME = 5
 HEART_BEAT_PONG_TIME = 5
 
 class TuyaClient(threading.Thread):
+
     """ Helper class to maintain a connection to and serialize access to a Tuya device. """
     def __init__(self, device: dict, on_status: callable):
+
         super().__init__()
         self.connection = None
         self.device = device
@@ -29,8 +31,10 @@ class TuyaClient(threading.Thread):
         self.socket_lock = threading.Lock()
         self.stop = threading.Event()
 
+
     def _ping(self):
         """ Send a ping message. """
+
         self.last_ping = time.time()
         try:
             logger.debug("TuyaClient: PING")
@@ -42,22 +46,29 @@ class TuyaClient(threading.Thread):
         except socket.error:
             self.force_reconnect = True
 
+
     def _reset_pong(self):
         """ Reset expired counter. """
+
         self.last_pong = time.time()
+
 
     def _is_connection_stale(self):
         """ Indicates if connection has expired. """
+
         if time.time() - self.last_ping > HEART_BEAT_PING_TIME:
             self._ping()
 
         return (time.time() - self.last_pong) > HEART_BEAT_PING_TIME + HEART_BEAT_PONG_TIME
 
+
     def _connect(self):
+
         self.connection = _connect(self.device)
         self._reset_pong()
 
     def _interrupt(self):
+
         try:
             # Write to the socket to interrupt the worker thread
             self.socketpair[1].send(b"x")
@@ -67,6 +78,7 @@ class TuyaClient(threading.Thread):
 
 
     def run(self):
+
         #self.connection = _connect(self.device)
 
         while not self.stop.is_set():
@@ -123,12 +135,17 @@ class TuyaClient(threading.Thread):
             except Exception:
                 logger.exception("TuyaClient: Unexpected exception")
 
+
+    #TODO: code is hidden by line 30
     def stop(self):
+
         self.stop.set()
         self._interrupt()
         self.join()
 
+
     def status(self):
+
         with self.socket_lock:
             if self.connection == None:
                 self._connect()
@@ -139,7 +156,9 @@ class TuyaClient(threading.Thread):
             except socket.error:
                 self.force_reconnect = True
 
+
     def set_state(self, value: bool, idx: int = 1):
+
         with self.socket_lock:
             if self.connection == None:
                 self._connect()

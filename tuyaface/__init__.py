@@ -252,7 +252,6 @@ def send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None,
     returns json str or str (error)
     """
 
-
     if max_receive_cnt <= 0:
         return
 
