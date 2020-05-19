@@ -45,6 +45,7 @@ class TuyaClient(threading.Thread):
                 self._reset_pong()
         except socket.error:
             self.force_reconnect = True
+            pass
 
 
     def _reset_pong(self):
@@ -93,6 +94,7 @@ class TuyaClient(threading.Thread):
                                 self.connection.close()
                             except Exception:
                                 logger.exception("TuyaClient: exception when closing socket")
+                                pass
                             self.connection = None
 
                     if self.connection == None:
@@ -102,6 +104,7 @@ class TuyaClient(threading.Thread):
                             logger.info("TuyaClient: connected")
                         except Exception:
                             logger.exception("TuyaClient: exception when opening socket")
+                            pass
 
                     if self.connection:
                         # poll the socket, as well as the socketpair to allow us to be interrupted
@@ -120,6 +123,7 @@ class TuyaClient(threading.Thread):
                             except socket.error:
                                 logger.exception("TuyaClient: exception when reading from socket")
                                 self.force_reconnect = True
+                                pass
 
                         if self.socketpair[0] in can_read:
                             # Clear the socket's buffer
