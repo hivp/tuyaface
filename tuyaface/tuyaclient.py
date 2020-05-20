@@ -118,9 +118,11 @@ class TuyaClient(threading.Thread):
                             if data:
                                 for reply in _process_raw_reply(self.device, data):
                                     logger.debug("TuyaClient: Got msg %s", reply)
-                                    reply = json.loads(reply["data"])
+                                    json_reply = None
+                                    if reply["data"]:
+                                        json_reply = json.loads(reply["data"])
                                     if self.on_status:
-                                        self.on_status(reply)
+                                        self.on_status(json_reply)
                             else:
                                 # If the socket is in the read list, but no data, sleep
                                 force_sleep = True
