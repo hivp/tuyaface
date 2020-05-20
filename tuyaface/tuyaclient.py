@@ -111,7 +111,7 @@ class TuyaClient(threading.Thread):
                     if self.connection:
                         # poll the socket, as well as the socketpair to allow us to be interrupted
                         rlist = [self.connection, self.socketpair[0]]
-                        can_read = select.select(rlist, [], [], HEART_BEAT_PING_TIME/2)
+                        can_read, _, _ = select.select(rlist, [], [], HEART_BEAT_PING_TIME/2)
                         if self.connection in can_read:
                             try:
                                 data = self.connection.recv(4096)
@@ -159,6 +159,7 @@ class TuyaClient(threading.Thread):
 
     def status(self):
 
+        self._interrupt()
         with self.socket_lock:
             if self.connection == None:
                 self._connect()
@@ -172,6 +173,7 @@ class TuyaClient(threading.Thread):
 
     def set_state(self, value: bool, idx: int = 1):
 
+        self._interrupt()
         with self.socket_lock:
             if self.connection == None:
                 self._connect()
