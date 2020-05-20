@@ -12,11 +12,11 @@ def encrypt(key, raw, use_base64=True):
 
 def decrypt(key, enc, use_base64=True):
     
-    encoded = enc
+    decoded = enc
     if use_base64:
-        encoded = base64.b64decode(enc)
+        decoded = base64.b64decode(enc)
    
-    raw = _cipher(key).decrypt(encoded)
+    raw = _cipher(key).decrypt(decoded)
     return _unpad(raw).decode('utf-8')
     
 

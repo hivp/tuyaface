@@ -30,6 +30,62 @@ set_status(device: dict, dps: dict)
 Returns dict
 ```
 
+TuyaClient
+----------
+
+__Initialize client__
+```
+TuyaClient(device: dict, on_status: callable=None, on_connection: callable=None)
+
+```
+
+__Request current device status__
+```
+status()
+Returns dict
+```
+
+__Update device dps state__
+```
+set_state(value: bool, idx: int = 1)
+Returns dict
+```
+
+__Close the connection and stop the worker thread__
+```
+stop_client()
+```
+
+
+_example_
+```
+from tuyaface.tuyaclient import TuyaClient
+
+def on_status(data:dict):
+    print(data)
+
+def on_connection(value: bool):
+    print(value)
+
+device = {
+    'protocol': '3.3', # 3.1 | 3.3
+    'deviceid': '34280100600194d17c96',
+    'localkey': 'e7e9339aa82abe61',
+    'ip': '192.168.1.101',            
+}
+
+client = TuyaClient(device, on_status, on_connection)
+client.start()
+
+data = client.status()
+client.set_state(!data['dps']['1'], 1) #toggle
+client.stop_client()
+
+```
+
+
+Data structure
+==================
 __Device dict__
 ```
 device = {
@@ -51,60 +107,20 @@ dps = {
 ```
 
 
-Todo 
+Todo *v1.1.8*
 ==================
-
+- validate/sanitize request
 
 Changelog
 ==================
-*v1.1.6*
-- payload protocol exception
-- fix return values
-- fix checks
-- inline function documentation
-- as per #27 retries/max recursion
-- clean up _connect
-- always return json (now json or None)
-- removed pyaes
-- revert #20
+*v1.1.7*
 
-*v1.1.5*
-- fix #24
-- additional condition on #20
-- use const in _generate_json_data 
+- added tuyaclient
+- Correct message header generation
+- fix typo in decrypt
 
-*v1.1.4*
-- _select_reply use filter correction
 
-*v1.1.3*
-- _select_reply use filter (fix #20?)
-- added check for empty string replies 
-- corrected setup.py
-
-*v1.1.2*
-- moved constants to separate file
-- _stitch_payload type casting
-
-*v1.1.1*
-- better description pub interface
-- replaced pycrypto with pycryptodome
-
-*v1.1.0* Breaking
-- function set_status was added
-- functionname set_status was changed to set_state
-
-*v1.0.5*
-- setup fixed
-- split _generate_payload function to a readable format
-- add support for older devices back in (untested, please report back)
-- solved recursion problem in send_request
-- moved functions back to init
-- removed TuyaConnection class, use send_request in try/except
-- declassified aescipher
-- moved to a more functional programming style
-- yield and list comprehensions
-- setup.py
-- removed code for older devices < 3.3 
+https://github.com/TradeFace/tuya/wiki
 
 Implementations
 ================
@@ -118,3 +134,4 @@ Acknowledgements
 - https://github.com/SDNick484 for testing protocol 3.1 reimplementation
 - https://github.com/jkerdreux-imt several improvements
 - https://github.com/PortableProgrammer help on #20
+- https://github.com/emontnemery tuyaclient 
