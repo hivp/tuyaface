@@ -22,13 +22,13 @@ class TuyaClient(threading.Thread):
         super().__init__()
         self.connection = None
         self.device = device
+        self.device['seq'] = 0
         self.force_reconnect = False
         self.last_ping = 0
         self.last_pong = time.time()
         self.on_connection = on_connection
         self.on_status = on_status
         self.command_queue = queue.Queue()
-        self.seq=0
         # socketpair used to interrupt the worker thread
         self.socketpair = socket.socketpair()
         self.stop = threading.Event()
@@ -40,8 +40,7 @@ class TuyaClient(threading.Thread):
         self.last_ping = time.time()
         try:
             logger.debug("TuyaClient: PING")
-            replies = list(reply for reply in send_request(self.device, tf.HEART_BEAT, connection=self.connection, seq=self.seq))
-            self.seq += 1
+            replies = list(reply for reply in send_request(self.device, tf.HEART_BEAT, connection=self.connection))
             if replies:
                 logger.debug("TuyaClient: PONG %s", replies)
                 self._reset_pong()
@@ -162,8 +161,7 @@ class TuyaClient(threading.Thread):
         if self.connection == None:
             self._connect()
         try:
-            data = status(self.device, connection=self.connection, seq=self.seq)
-            self.seq += 1
+            data = status(self.device, connection=self.connection)
             return data
         except socket.error:
             self.force_reconnect = True
@@ -187,8 +185,7 @@ class TuyaClient(threading.Thread):
         if self.connection == None:
             self._connect()
         try:
-            data = set_state(self.device, value, idx, connection=self.connection, seq=self.seq)
-            self.seq += 1
+            data = set_state(self.device, value, idx, connection=self.connection)
             return data
         except socket.error:
             self.force_reconnect = True
