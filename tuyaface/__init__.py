@@ -53,7 +53,7 @@ def _generate_json_data(device_id: str, command: int, data: dict):
     return json.dumps(json_data)
 
 
-def _generate_payload(device: dict, request_cnt: int, command: int, data: dict=None):
+def _generate_payload(device: dict, command: int, data: dict=None):
     """
     Generate the payload to send.
 
@@ -99,6 +99,9 @@ def _generate_payload(device: dict, request_cnt: int, command: int, data: dict=N
     else:
         raise Exception('Unknown protocol %s.' % (device['protocol']))
 
+    request_cnt = device.get('seq', 0)
+    if 'seq' in device:
+        device['seq'] = request_cnt + 1
     return _stitch_payload(payload_hb, request_cnt, command)
 
 
@@ -173,34 +176,34 @@ def _select_reply(replies: list):
     return filtered_replies[0]["data"]
 
 
-def _status(device: dict, cmd: int = tf.DP_QUERY, expect_reply: int = 1, recurse_cnt: int = 0, connection=None, seq: int = 0):
+def _status(device: dict, cmd: int = tf.DP_QUERY, expect_reply: int = 1, recurse_cnt: int = 0, connection=None):
     """
     Sends current status request to the tuya device
     returns json str
     """
 
-    replies = list(reply for reply in send_request(device, cmd, None, expect_reply, connection=connection, seq=seq))
+    replies = list(reply for reply in send_request(device, cmd, None, expect_reply, connection=connection))
 
     reply = _select_reply(replies)
     if not reply and recurse_cnt < 3:
         # some devices (ie LSC Bulbs) only offer partial status with CONTROL_NEW instead of DP_QUERY
-        reply = _status(device, tf.CONTROL_NEW, 2, recurse_cnt + 1, seq=seq)
+        reply = _status(device, tf.CONTROL_NEW, 2, recurse_cnt + 1)
     return reply
 
 
-def status(device: dict, connection=None, seq: int = 0):
+def status(device: dict, connection=None):
     """
     Requests status of the tuya device
     returns dict
     """
 
     #TODO: validate/sanitize request
-    reply = _status(device, connection=connection, seq=seq)
+    reply = _status(device, connection=connection)
     logger.debug("reply: '%s'", reply)
     return json.loads(reply)
 
 
-def set_status(device: dict, dps: dict, connection=None, seq: int = 0):
+def set_status(device: dict, dps: dict, connection=None):
     """
     Sends status update request to the tuya device
     returns dict
@@ -208,21 +211,21 @@ def set_status(device: dict, dps: dict, connection=None, seq: int = 0):
 
     #TODO: validate/sanitize request
     tmp = { str(k):v for k,v in dps.items() }
-    replies = list(reply for reply in send_request(device, tf.CONTROL, tmp, 2, connection=connection, seq=seq))
+    replies = list(reply for reply in send_request(device, tf.CONTROL, tmp, 2, connection=connection))
 
     reply = _select_reply(replies)
     logger.debug("reply: %s", reply)
     return json.loads(reply)
 
 
-def set_state(device: dict, value: bool, idx: int = 1, connection=None, seq: int = 0):
+def set_state(device: dict, value: bool, idx: int = 1, connection=None):
     """
     Sends status update request for one dps value to the tuya device
     returns dict
     """
 
     # turn a device on / off
-    return set_status(device,{idx: value}, connection=connection, seq=seq)
+    return set_status(device,{idx: value}, connection=connection)
 
 
 def _connect(device: dict, timeout:int = 2):
@@ -246,7 +249,7 @@ def _connect(device: dict, timeout:int = 2):
         raise e
 
 
-def send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None, max_receive_cnt: int = 1, connection: socket.socket = None, seq: int = 0):
+def send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None, max_receive_cnt: int = 1, connection: socket.socket = None):
     """
     Connects to the tuya device and sends the request
     returns json str or str (error)
@@ -259,7 +262,7 @@ def send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None,
         connection = _connect(device)
 
     if command >= 0:
-        request = _generate_payload(device, seq, command, payload)
+        request = _generate_payload(device, command, payload)
         logger.debug("sending command: [%s] payload: [%s]" % (command,payload))
         try:
             connection.send(request)
@@ -275,4 +278,4 @@ def send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None,
         pass
     except Exception as e:
         raise e
-    yield from send_request(device, -1, None, max_receive_cnt-1, connection, seq)
+    yield from send_request(device, -1, None, max_receive_cnt-1, connection)
