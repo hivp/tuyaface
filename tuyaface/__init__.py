@@ -172,7 +172,7 @@ def _select_reply(replies: list):
 
     filtered_replies = list(filter(lambda x: x["data"] != 'json obj data unvalid', replies))
     if len(filtered_replies) == 0:
-        return '{}'
+        return None
     return filtered_replies[0]["data"]
 
 
@@ -214,6 +214,8 @@ def set_status(device: dict, dps: dict, connection=None):
     replies = list(reply for reply in send_request(device, tf.CONTROL, tmp, 2, connection=connection))
 
     reply = _select_reply(replies)
+    if not reply:
+        reply = '{}'
     logger.debug("reply: %s", reply)
     return json.loads(reply)
 
