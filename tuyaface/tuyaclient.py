@@ -1,5 +1,6 @@
 import json
 import logging
+import queue
 import select
 import socket
 import threading
@@ -16,7 +17,7 @@ HEART_BEAT_PONG_TIME = 5
 class TuyaClient(threading.Thread):
 
     """ Helper class to maintain a connection to and serialize access to a Tuya device. """
-    def __init__(self, device: dict, on_status: callable):
+    def __init__(self, device: dict, on_status: callable=None, on_connection: callable=None):
 
         super().__init__()
         self.connection = None
@@ -24,7 +25,9 @@ class TuyaClient(threading.Thread):
         self.force_reconnect = False
         self.last_ping = 0
         self.last_pong = time.time()
+        self.on_connection = on_connection
         self.on_status = on_status
+        self.queue = queue.Queue()
         self.seq=0
         # socketpair used to interrupt the worker thread
         self.socketpair = socket.socketpair()
@@ -65,6 +68,7 @@ class TuyaClient(threading.Thread):
     def _connect(self):
 
         self.connection = _connect(self.device)
+        self.queue.put((self.on_connection, True))
         self._reset_pong()
 
     def _interrupt(self):
@@ -79,11 +83,9 @@ class TuyaClient(threading.Thread):
 
     def run(self):
 
-        #self.connection = _connect(self.device)
-
         while not self.stop.is_set():
             try:
-                data = None
+                force_sleep = False
                 with self.socket_lock:
                     if self.force_reconnect:
                         self.force_reconnect = False
@@ -93,30 +95,35 @@ class TuyaClient(threading.Thread):
                                 self.connection.close()
                             except Exception:
                                 logger.exception("TuyaClient: exception when closing socket", exc_info=False)
+                            self.queue.put((self.on_connection, False))
                             self.connection = None
+                            continue
 
                     if self.connection == None:
                         try:
                             logger.debug("TuyaClient: connecting")
                             self._connect()
                             logger.info("TuyaClient: connected")
+                            continue
                         except Exception:
                             logger.exception("TuyaClient: exception when opening socket", exc_info=False)
 
                     if self.connection:
                         # poll the socket, as well as the socketpair to allow us to be interrupted
                         rlist = [self.connection, self.socketpair[0]]
-                        can_read, a, b = select.select(rlist, [], [], HEART_BEAT_PING_TIME/2)
+                        can_read, _, _ = select.select(rlist, [], [], HEART_BEAT_PING_TIME/2)
                         if self.connection in can_read:
                             try:
                                 data = self.connection.recv(4096)
-                                logger.debug("TuyaClient: read from socket '%s' (%s), %s, %s", data, len(data), a, b)
+                                logger.debug("TuyaClient: read from socket '%s' (%s)", data, len(data))
                                 if data:
                                     for reply in _process_raw_reply(self.device, data):
                                         logger.debug("TuyaClient: Got msg %s", reply)
-                                        if self.on_status:
-                                            reply = json.loads(reply["data"])
-                                            self.on_status(reply)
+                                        reply = json.loads(reply["data"])
+                                        self.queue.put((self.on_status, reply))
+                                else:
+                                    # If the socket is in the read list, but no data, sleep
+                                    force_sleep = True
                             except socket.error:
                                 logger.exception("TuyaClient: exception when reading from socket", exc_info=False)
                                 self.force_reconnect = True
@@ -129,15 +136,21 @@ class TuyaClient(threading.Thread):
                         if self._is_connection_stale():
                              self.force_reconnect = True
 
-                if not self.connection or not data:
-                #if not self.connection:
+                # Issue status or connection callbacks outside the lock in case the client of TuyaClient
+                # calls TuyaClient.status() or TuyaClient.set_state() when handling the callback
+                while not self.queue.empty():
+                    cb, arg = self.queue.get()
+                    if cb:
+                        cb(arg)
+
+                if not self.connection or force_sleep:
                     time.sleep(HEART_BEAT_PING_TIME/2)
             except Exception:
                 logger.exception("TuyaClient: Unexpected exception")
 
 
-    #TODO: code is hidden by line 30
-    def stop(self):
+    def stop_client(self):
+        """Close the connection and stop the worker thread"""
 
         self.stop.set()
         self._interrupt()
@@ -146,6 +159,7 @@ class TuyaClient(threading.Thread):
 
     def status(self):
 
+        self._interrupt()
         with self.socket_lock:
             if self.connection == None:
                 self._connect()
@@ -159,6 +173,7 @@ class TuyaClient(threading.Thread):
 
     def set_state(self, value: bool, idx: int = 1):
 
+        self._interrupt()
         with self.socket_lock:
             if self.connection == None:
                 self._connect()
