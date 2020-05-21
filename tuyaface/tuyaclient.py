@@ -21,10 +21,8 @@ class TuyaClient(threading.Thread):
 
         super().__init__()
         self.connection = None
-        _set_properties(device)
-        #print(device)
+        _set_properties(device)        
         self.device = device
-        self.device['seq'] = 0
         
         self.force_reconnect = False
         self.last_ping = 0
@@ -87,6 +85,7 @@ class TuyaClient(threading.Thread):
             pass
 
 
+    #TODO: nested too deep, split up in functions
     def run(self):
 
         while not self.stop.is_set():

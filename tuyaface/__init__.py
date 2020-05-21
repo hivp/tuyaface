@@ -100,6 +100,7 @@ def _generate_payload(device: dict, command: int, data: dict=None):
     request_cnt = device['tuyaface'].get('sequence_nr', 0)
     if 'sequence_nr' in device['tuyaface']:
         device['tuyaface']['sequence_nr'] = request_cnt + 1
+
     return _stitch_payload(payload_hb, request_cnt, command)
 
 
@@ -108,14 +109,14 @@ def _stitch_payload(payload_hb: bytes, request_cnt: int, command: int):
     Joins the payload request parts together
     """
 
-    command_hs = command.to_bytes(4, byteorder='big')
-    request_cnt_hs = request_cnt.to_bytes(4, byteorder='big')
+    command_hb = command.to_bytes(4, byteorder='big')
+    request_cnt_hb = request_cnt.to_bytes(4, byteorder='big')
 
     payload_hb = payload_hb + hex2bytes("000000000000aa55")
 
     payload_hb_len_hs = len(payload_hb).to_bytes(4, byteorder='big')
     
-    header_hb = hex2bytes('000055aa') + request_cnt_hs + command_hs + payload_hb_len_hs
+    header_hb = hex2bytes('000055aa') + request_cnt_hb + command_hb + payload_hb_len_hs
     buffer_hb = header_hb + payload_hb
 
     # calc the CRC of everything except where the CRC goes and the suffix
@@ -173,7 +174,12 @@ def _select_reply(replies: list):
         return None
     return filtered_replies[0]["data"]
 
+
 def _set_properties(device: dict):
+    """
+    Set default tuyaface properties
+    returns dict
+    """
 
     device.setdefault('tuyaface', {
         'sequence_nr': 0,
@@ -183,22 +189,29 @@ def _set_properties(device: dict):
     })
 
     return device
+
     
-def _status(device: dict, cmd: int = tf.DP_QUERY, expect_reply: int = 1, recurse_cnt: int = 0):
+def _status(device: dict, expect_reply: int = 1, recurse_cnt: int = 0):
     """
     Sends current status request to the tuya device
     returns json str
     """
 
     _set_properties(device)
-    
-    # device['tuyaface']['pref_status_cmd'] 
-    replies = list(reply for reply in _send_request(device, cmd, None, expect_reply))
+
+    replies = list(reply for reply in _send_request(
+            device, 
+            device['tuyaface']['pref_status_cmd'], 
+            None, 
+            expect_reply
+        )
+    )
 
     reply = _select_reply(replies)
-    if not reply and recurse_cnt < 3:
+    if not reply and recurse_cnt < 3 and device['tuyaface']['availability']:
         # some devices (ie LSC Bulbs) only offer partial status with CONTROL_NEW instead of DP_QUERY
-        reply = _status(device, tf.CONTROL_NEW, 2, recurse_cnt + 1)
+        device['tuyaface']['pref_status_cmd'] = tf.CONTROL_NEW
+        reply = _status(device, 2, recurse_cnt + 1)
     return reply
 
 
@@ -207,7 +220,7 @@ def status(device: dict):
     Requests status of the tuya device
     returns dict
     """
-    print(device)
+    
     #TODO: validate/sanitize request
     reply = _status(device)
     logger.debug("reply: '%s'", reply)
