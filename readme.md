@@ -107,7 +107,7 @@ dps = {
 ```
 
 
-Todo *v1.1.8*
+Todo *v1.2.0*
 ==================
 - validate/sanitize request
 - Store preferred status command in device dict #43
@@ -115,7 +115,7 @@ Todo *v1.1.8*
 
 Changelog
 ==================
-*v1.1.8*
+*v1.2.0*
 - 
 
 Earlier changes https://github.com/TradeFace/tuya/wiki
