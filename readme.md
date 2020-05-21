@@ -110,17 +110,15 @@ dps = {
 Todo *v1.1.8*
 ==================
 - validate/sanitize request
+- Store preferred status command in device dict #43
+- Nest tuyaface values in device: dict #44
 
 Changelog
 ==================
-*v1.1.7*
+*v1.1.8*
+- 
 
-- added tuyaclient
-- Correct message header generation
-- fix typo in decrypt
-
-
-https://github.com/TradeFace/tuya/wiki
+Earlier changes https://github.com/TradeFace/tuya/wiki
 
 Implementations
 ================
