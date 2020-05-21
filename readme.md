@@ -116,7 +116,8 @@ Todo *v1.2.0*
 Changelog
 ==================
 *v1.2.0*
-- 
+- WIP #44 sequence_nr
+- WIP #44 connection
 
 Earlier changes https://github.com/TradeFace/tuya/wiki
 

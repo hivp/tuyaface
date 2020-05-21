@@ -184,7 +184,7 @@ def _set_properties(device: dict):
 
     return device
     
-def _status(device: dict, cmd: int = tf.DP_QUERY, expect_reply: int = 1, recurse_cnt: int = 0, connection=None):
+def _status(device: dict, cmd: int = tf.DP_QUERY, expect_reply: int = 1, recurse_cnt: int = 0):
     """
     Sends current status request to the tuya device
     returns json str
@@ -193,7 +193,7 @@ def _status(device: dict, cmd: int = tf.DP_QUERY, expect_reply: int = 1, recurse
     _set_properties(device)
     
     # device['tuyaface']['pref_status_cmd'] 
-    replies = list(reply for reply in _send_request(device, cmd, None, expect_reply, connection=connection))
+    replies = list(reply for reply in _send_request(device, cmd, None, expect_reply))
 
     reply = _select_reply(replies)
     if not reply and recurse_cnt < 3:
@@ -202,19 +202,19 @@ def _status(device: dict, cmd: int = tf.DP_QUERY, expect_reply: int = 1, recurse
     return reply
 
 
-def status(device: dict, connection=None):
+def status(device: dict):
     """
     Requests status of the tuya device
     returns dict
     """
     print(device)
     #TODO: validate/sanitize request
-    reply = _status(device, connection=connection)
+    reply = _status(device)
     logger.debug("reply: '%s'", reply)
     return json.loads(reply)
 
 
-def set_status(device: dict, dps: dict, connection=None):
+def set_status(device: dict, dps: dict):
     """
     Sends status update request to the tuya device
     returns dict
@@ -223,7 +223,7 @@ def set_status(device: dict, dps: dict, connection=None):
 
     #TODO: validate/sanitize request
     tmp = { str(k):v for k,v in dps.items() }
-    replies = list(reply for reply in _send_request(device, tf.CONTROL, tmp, 2, connection=connection))
+    replies = list(reply for reply in _send_request(device, tf.CONTROL, tmp, 2))
 
     reply = _select_reply(replies)
     if not reply:
@@ -232,14 +232,14 @@ def set_status(device: dict, dps: dict, connection=None):
     return json.loads(reply)
 
 
-def set_state(device: dict, value: bool, idx: int = 1, connection=None):
+def set_state(device: dict, value: bool, idx: int = 1):
     """
     Sends status update request for one dps value to the tuya device
     returns dict
     """
 
     # turn a device on / off
-    return set_status(device,{idx: value}, connection=connection)
+    return set_status(device,{idx: value})
 
 
 def _connect(device: dict, timeout:int = 2):
@@ -265,7 +265,7 @@ def _connect(device: dict, timeout:int = 2):
         raise e
 
 
-def _send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None, max_receive_cnt: int = 1, connection: socket.socket = None):
+def _send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None, max_receive_cnt: int = 1):
     """
     Connects to the tuya device and sends the request
     returns json str or str (error)
@@ -274,8 +274,10 @@ def _send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None
     if max_receive_cnt <= 0:
         return
 
+    connection = device['tuyaface']['connection']
     if not connection:
-        connection = _connect(device)
+        _connect(device)
+        connection = device['tuyaface']['connection']
 
     if command >= 0:
         request = _generate_payload(device, command, payload)
@@ -295,4 +297,4 @@ def _send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None
         pass
     except Exception as e:
         raise e
-    yield from _send_request(device, -1, None, max_receive_cnt-1, connection)
+    yield from _send_request(device, -1, None, max_receive_cnt-1)
