@@ -1,9 +1,7 @@
 import time
-import select
 import socket
 import json
 from bitstring import BitArray
-import threading
 import binascii
 from hashlib import md5
 import logging
@@ -99,9 +97,9 @@ def _generate_payload(device: dict, command: int, data: dict=None):
     else:
         raise Exception('Unknown protocol %s.' % (device['protocol']))
 
-    request_cnt = device.get('seq', 0)
-    if 'seq' in device:
-        device['seq'] = request_cnt + 1
+    request_cnt = device['tuyaface'].get('sequence_nr', 0)
+    if 'sequence_nr' in device['tuyaface']:
+        device['tuyaface']['sequence_nr'] = request_cnt + 1
     return _stitch_payload(payload_hb, request_cnt, command)
 
 
@@ -175,14 +173,27 @@ def _select_reply(replies: list):
         return None
     return filtered_replies[0]["data"]
 
+def _set_properties(device: dict):
 
+    device.setdefault('tuyaface', {
+        'sequence_nr': 0,
+        'connection': None,
+        'availability': False,
+        'pref_status_cmd': tf.DP_QUERY
+    })
+
+    return device
+    
 def _status(device: dict, cmd: int = tf.DP_QUERY, expect_reply: int = 1, recurse_cnt: int = 0, connection=None):
     """
     Sends current status request to the tuya device
     returns json str
     """
 
-    replies = list(reply for reply in send_request(device, cmd, None, expect_reply, connection=connection))
+    _set_properties(device)
+    
+    # device['tuyaface']['pref_status_cmd'] 
+    replies = list(reply for reply in _send_request(device, cmd, None, expect_reply, connection=connection))
 
     reply = _select_reply(replies)
     if not reply and recurse_cnt < 3:
@@ -196,7 +207,7 @@ def status(device: dict, connection=None):
     Requests status of the tuya device
     returns dict
     """
-
+    print(device)
     #TODO: validate/sanitize request
     reply = _status(device, connection=connection)
     logger.debug("reply: '%s'", reply)
@@ -208,10 +219,11 @@ def set_status(device: dict, dps: dict, connection=None):
     Sends status update request to the tuya device
     returns dict
     """
+    _set_properties(device)
 
     #TODO: validate/sanitize request
     tmp = { str(k):v for k,v in dps.items() }
-    replies = list(reply for reply in send_request(device, tf.CONTROL, tmp, 2, connection=connection))
+    replies = list(reply for reply in _send_request(device, tf.CONTROL, tmp, 2, connection=connection))
 
     reply = _select_reply(replies)
     if not reply:
@@ -245,13 +257,15 @@ def _connect(device: dict, timeout:int = 2):
         connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         connection.settimeout(timeout)
         connection.connect((device['ip'], 6668))
+        device['tuyaface']['connection'] = connection
+        device['tuyaface']['availability'] = True
         return connection
     except Exception as e:
         logger.warning('Failed to connect to %s. Retry in %d seconds' % (device['ip'], 1))
         raise e
 
 
-def send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None, max_receive_cnt: int = 1, connection: socket.socket = None):
+def _send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None, max_receive_cnt: int = 1, connection: socket.socket = None):
     """
     Connects to the tuya device and sends the request
     returns json str or str (error)
@@ -277,7 +291,8 @@ def send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None,
         for reply in _process_raw_reply(device, data):
             yield reply
     except socket.timeout as e:
+        device['tuyaface']['availability'] = False
         pass
     except Exception as e:
         raise e
-    yield from send_request(device, -1, None, max_receive_cnt-1, connection)
+    yield from _send_request(device, -1, None, max_receive_cnt-1, connection)

@@ -6,7 +6,7 @@ import socket
 import threading
 import time
 
-from . import (_connect, _process_raw_reply, send_request, set_state, status, tf)
+from . import (_connect, _process_raw_reply, _send_request, _set_properties, set_state, status, tf)
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +21,11 @@ class TuyaClient(threading.Thread):
 
         super().__init__()
         self.connection = None
+        _set_properties(device)
+
         self.device = device
         self.device['seq'] = 0
+        
         self.force_reconnect = False
         self.last_ping = 0
         self.last_pong = time.time()
@@ -40,7 +43,7 @@ class TuyaClient(threading.Thread):
         self.last_ping = time.time()
         try:
             logger.debug("TuyaClient: PING")
-            replies = list(reply for reply in send_request(self.device, tf.HEART_BEAT, connection=self.connection))
+            replies = list(reply for reply in _send_request(self.device, tf.HEART_BEAT, connection=self.connection))
             if replies:
                 logger.debug("TuyaClient: PONG %s", replies)
                 self._reset_pong()
@@ -108,6 +111,7 @@ class TuyaClient(threading.Thread):
                         logger.exception("TuyaClient: exception when opening socket", exc_info=False)
 
                 if self.connection:
+                    print(self.device)
                     # poll the socket, as well as the socketpair to allow us to be interrupted
                     rlist = [self.connection, self.socketpair[0]]
                     can_read, _, _ = select.select(rlist, [], [], HEART_BEAT_PING_TIME/2)
@@ -160,7 +164,7 @@ class TuyaClient(threading.Thread):
 
         if self.connection == None:
             self._connect()
-        try:
+        try:            
             data = status(self.device, connection=self.connection)
             return data
         except socket.error:
