@@ -23,7 +23,7 @@ class TuyaClient(threading.Thread):
         self.connection = None
         _set_properties(device)        
         self.device = device
-        
+        self.device['seq'] = 1
         self.force_reconnect = False
         self.last_ping = 0
         self.last_pong = time.time()
