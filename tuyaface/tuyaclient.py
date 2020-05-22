@@ -6,7 +6,7 @@ import socket
 import threading
 import time
 
-from . import (_connect, _process_raw_reply, send_request, set_state, status, tf)
+from . import (_connect, _process_raw_reply, _send_request, _set_properties, set_state, status, tf)
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +21,7 @@ class TuyaClient(threading.Thread):
 
         super().__init__()
         self.connection = None
+        _set_properties(device)        
         self.device = device
         self.device['seq'] = 1
         self.force_reconnect = False
@@ -40,7 +41,7 @@ class TuyaClient(threading.Thread):
         self.last_ping = time.time()
         try:
             logger.debug("TuyaClient: PING")
-            replies = list(reply for reply in send_request(self.device, tf.HEART_BEAT, connection=self.connection))
+            replies = list(reply for reply in _send_request(self.device, tf.HEART_BEAT))
             if replies:
                 logger.debug("TuyaClient: PONG %s", replies)
                 self._reset_pong()
@@ -65,7 +66,11 @@ class TuyaClient(threading.Thread):
 
     def _connect(self):
 
-        self.connection = _connect(self.device)
+        self.connection = self.device['tuyaface']['connection']
+        if not  self.connection:
+            _connect(self.device)
+            self.connection = self.device['tuyaface']['connection']
+
         if self.on_connection:
             self.on_connection(True)
         self._reset_pong()
@@ -80,6 +85,7 @@ class TuyaClient(threading.Thread):
             pass
 
 
+    #TODO: nested too deep, split up in functions
     def run(self):
 
         while not self.stop.is_set():
@@ -108,6 +114,7 @@ class TuyaClient(threading.Thread):
                         logger.exception("TuyaClient: exception when opening socket", exc_info=False)
 
                 if self.connection:
+                    #print(self.device)
                     # poll the socket, as well as the socketpair to allow us to be interrupted
                     rlist = [self.connection, self.socketpair[0]]
                     can_read, _, _ = select.select(rlist, [], [], HEART_BEAT_PING_TIME/2)
@@ -160,8 +167,8 @@ class TuyaClient(threading.Thread):
 
         if self.connection == None:
             self._connect()
-        try:
-            data = status(self.device, connection=self.connection)
+        try:            
+            data = status(self.device)
             return data
         except socket.error:
             self.force_reconnect = True
@@ -185,7 +192,7 @@ class TuyaClient(threading.Thread):
         if self.connection == None:
             self._connect()
         try:
-            data = set_state(self.device, value, idx, connection=self.connection)
+            data = set_state(self.device, value, idx)
             return data
         except socket.error:
             self.force_reconnect = True

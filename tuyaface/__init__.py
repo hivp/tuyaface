@@ -1,9 +1,7 @@
 import time
-import select
 import socket
 import json
 from bitstring import BitArray
-import threading
 import binascii
 from hashlib import md5
 import logging
@@ -99,9 +97,10 @@ def _generate_payload(device: dict, command: int, data: dict=None):
     else:
         raise Exception('Unknown protocol %s.' % (device['protocol']))
 
-    request_cnt = device.get('seq', 0)
-    if 'seq' in device:
-        device['seq'] = request_cnt + 1
+    request_cnt = device['tuyaface'].get('sequence_nr', 0)
+    if 'sequence_nr' in device['tuyaface']:
+        device['tuyaface']['sequence_nr'] = request_cnt + 1
+
     return _stitch_payload(payload_hb, request_cnt, command)
 
 
@@ -110,14 +109,14 @@ def _stitch_payload(payload_hb: bytes, request_cnt: int, command: int):
     Joins the payload request parts together
     """
 
-    command_hs = command.to_bytes(4, byteorder='big')
-    request_cnt_hs = request_cnt.to_bytes(4, byteorder='big')
+    command_hb = command.to_bytes(4, byteorder='big')
+    request_cnt_hb = request_cnt.to_bytes(4, byteorder='big')
 
     payload_hb = payload_hb + hex2bytes("000000000000aa55")
 
     payload_hb_len_hs = len(payload_hb).to_bytes(4, byteorder='big')
     
-    header_hb = hex2bytes('000055aa') + request_cnt_hs + command_hs + payload_hb_len_hs
+    header_hb = hex2bytes('000055aa') + request_cnt_hb + command_hb + payload_hb_len_hs
     buffer_hb = header_hb + payload_hb
 
     # calc the CRC of everything except where the CRC goes and the suffix
@@ -192,42 +191,68 @@ def _select_reply(replies: list):
     return filtered_replies[0]["data"]
 
 
-def _status(device: dict, cmd: int = tf.DP_QUERY, expect_reply: int = 1, recurse_cnt: int = 0, connection=None):
+def _set_properties(device: dict):
+    """
+    Set default tuyaface properties
+    returns dict
+    """
+
+    device.setdefault('tuyaface', {
+        'sequence_nr': 0,
+        'connection': None,
+        'availability': False,
+        'pref_status_cmd': tf.DP_QUERY
+    })
+
+    return device
+
+    
+def _status(device: dict, expect_reply: int = 1, recurse_cnt: int = 0):
     """
     Sends current status request to the tuya device
     returns json str
     """
 
-    replies = list(reply for reply in send_request(device, cmd, None, expect_reply, connection=connection))
+    _set_properties(device)
+
+    replies = list(reply for reply in _send_request(
+            device, 
+            device['tuyaface']['pref_status_cmd'], 
+            None, 
+            expect_reply
+        )
+    )
 
     reply = _select_reply(replies)
-    if not reply and recurse_cnt < 3:
+    if not reply and recurse_cnt < 3 and device['tuyaface']['availability']:
         # some devices (ie LSC Bulbs) only offer partial status with CONTROL_NEW instead of DP_QUERY
-        reply = _status(device, tf.CONTROL_NEW, 2, recurse_cnt + 1)
+        device['tuyaface']['pref_status_cmd'] = tf.CONTROL_NEW
+        reply = _status(device, 2, recurse_cnt + 1)
     return reply
 
 
-def status(device: dict, connection=None):
+def status(device: dict):
     """
     Requests status of the tuya device
     returns dict
     """
-
+    
     #TODO: validate/sanitize request
-    reply = _status(device, connection=connection)
+    reply = _status(device)
     logger.debug("reply: '%s'", reply)
     return json.loads(reply)
 
 
-def set_status(device: dict, dps: dict, connection=None):
+def set_status(device: dict, dps: dict):
     """
     Sends status update request to the tuya device
     returns dict
     """
+    _set_properties(device)
 
     #TODO: validate/sanitize request
     tmp = { str(k):v for k,v in dps.items() }
-    replies = list(reply for reply in send_request(device, tf.CONTROL, tmp, 2, connection=connection))
+    replies = list(reply for reply in _send_request(device, tf.CONTROL, tmp, 2))
 
     reply = _select_reply(replies)
     if not reply:
@@ -236,14 +261,14 @@ def set_status(device: dict, dps: dict, connection=None):
     return json.loads(reply)
 
 
-def set_state(device: dict, value: bool, idx: int = 1, connection=None):
+def set_state(device: dict, value: bool, idx: int = 1):
     """
     Sends status update request for one dps value to the tuya device
     returns dict
     """
 
     # turn a device on / off
-    return set_status(device,{idx: value}, connection=connection)
+    return set_status(device,{idx: value})
 
 
 def _connect(device: dict, timeout:int = 2):
@@ -261,13 +286,15 @@ def _connect(device: dict, timeout:int = 2):
         connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         connection.settimeout(timeout)
         connection.connect((device['ip'], 6668))
+        device['tuyaface']['connection'] = connection
+        device['tuyaface']['availability'] = True
         return connection
     except Exception as e:
         logger.warning('Failed to connect to %s. Retry in %d seconds' % (device['ip'], 1))
         raise e
 
 
-def send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None, max_receive_cnt: int = 1, connection: socket.socket = None):
+def _send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None, max_receive_cnt: int = 1):
     """
     Connects to the tuya device and sends the request
     returns json str or str (error)
@@ -276,8 +303,10 @@ def send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None,
     if max_receive_cnt <= 0:
         return
 
+    connection = device['tuyaface']['connection']
     if not connection:
-        connection = _connect(device)
+        _connect(device)
+        connection = device['tuyaface']['connection']
 
     if command >= 0:
         request = _generate_payload(device, command, payload)
@@ -295,7 +324,8 @@ def send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None,
                 logger.debug("received msg (seq %s): [%x:%s] '%s'", reply['seq'], reply['cmd'], tf.cmd_to_string.get(reply['cmd'], f'UNKNOWN'), reply.get('data', ''))
             yield reply
     except socket.timeout as e:
+        device['tuyaface']['availability'] = False
         pass
     except Exception as e:
         raise e
-    yield from send_request(device, -1, None, max_receive_cnt-1, connection)
+    yield from _send_request(device, -1, None, max_receive_cnt-1)
