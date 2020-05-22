@@ -136,32 +136,48 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
     #TODO: don't overwrite variables
     for s in a.split('0x000055aa', bytealigned=True):
         sbytes = s.tobytes()
-        cmd = int.from_bytes(sbytes[11:12], byteorder='big')
-        
+        payload = None
+
+        # Skip invalid messages
+        if len(sbytes) < 28 or not s.endswith('0x0000aa55'):
+            continue
+
+        # Parse header
+        seq = int.from_bytes(sbytes[4:8], byteorder='big')
+        cmd = int.from_bytes(sbytes[8:12], byteorder='big')
+        sz = int.from_bytes(sbytes[12:16], byteorder='big')
+        rc = int.from_bytes(sbytes[16:20], byteorder='big')
+        has_return_code = (rc & 0xFFFFFF00) == 0
+        crc = int.from_bytes(sbytes[-8:-4], byteorder='big')
+
+        # Check CRC
+        if crc != binascii.crc32(sbytes[:-8]):
+            continue
+
+        crc2 = binascii.crc32(sbytes[:-8])
         if device['protocol'] == '3.1':
             
             data = sbytes[20:-8]
             if sbytes[20:21] == b'{':
                 if not isinstance(data, str):
-                    data = data.decode()
-                yield {"cmd": cmd, "data": data}
+                    payload = data.decode()
             elif sbytes[20:23] == b'3.1':
                 logger.info('we\'ve got a 3.1 reply, code untested')
                 data = data[3:]  # remove version header
                 data = data[16:]  # remove (what I'm guessing, but not confirmed is) 16-bytes of MD5 hexdigest of payload
-                data_decrypt = aescipher.decrypt(device['localkey'], data)
-                yield {"cmd": cmd, "data": data_decrypt}
+                payload = aescipher.decrypt(device['localkey'], data)
 
         elif device['protocol'] == '3.3':
-
-            if cmd in [tf.STATUS, tf.DP_QUERY, tf.DP_QUERY_NEW]:
-                data = sbytes[20:8+int.from_bytes(sbytes[14:16], byteorder='big')]
+            if sz > 12:
+                data = sbytes[20:8+sz]
                 if cmd == tf.STATUS:
                     data = data[15:]
-                data_decrypt = aescipher.decrypt(device['localkey'], data, False)
-                yield {"cmd": cmd, "data": data_decrypt}
-            elif cmd in [tf.HEART_BEAT]:
-                yield {"cmd": cmd, "data": None}
+                payload = aescipher.decrypt(device['localkey'], data, False)
+
+        msg = {"cmd": cmd, "seq": seq, "data": payload}
+        if has_return_code:
+            msg['rc'] = rc
+        yield msg
 
 
 def _select_reply(replies: list):
@@ -170,7 +186,7 @@ def _select_reply(replies: list):
     returns json str
     """
 
-    filtered_replies = list(filter(lambda x: x["data"] != 'json obj data unvalid', replies))
+    filtered_replies = list(filter(lambda x: x["data"] and x["data"] != 'json obj data unvalid', replies))
     if len(filtered_replies) == 0:
         return None
     return filtered_replies[0]["data"]
@@ -265,7 +281,7 @@ def send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None,
 
     if command >= 0:
         request = _generate_payload(device, command, payload)
-        logger.debug("sending command: [%s] payload: [%s]" % (command,payload))
+        logger.debug("sending command: [%x:%s] payload: [%s]", command, tf.cmd_to_string.get(command, f'UNKNOWN'), payload)
         try:
             connection.send(request)
         except Exception as e:
@@ -275,6 +291,8 @@ def send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None,
         data = connection.recv(4096)
 
         for reply in _process_raw_reply(device, data):
+            if reply:
+                logger.debug("received msg (seq %s): [%x:%s] '%s'", reply['seq'], reply['cmd'], tf.cmd_to_string.get(reply['cmd'], f'UNKNOWN'), reply.get('data', ''))
             yield reply
     except socket.timeout as e:
         pass
