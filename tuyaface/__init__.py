@@ -51,7 +51,7 @@ def _generate_json_data(device_id: str, command: int, data: dict):
     return json.dumps(json_data)
 
 
-def _generate_payload(device: dict, command: int, data: dict=None):
+def _generate_payload(device: dict, command: int, data: dict=None, request_cnt: int=0):
     """
     Generate the payload to send.
 
@@ -96,10 +96,6 @@ def _generate_payload(device: dict, command: int, data: dict=None):
         payload_hb = header_payload_hb + payload_crypt
     else:
         raise Exception('Unknown protocol %s.' % (device['protocol']))
-
-    request_cnt = device['tuyaface'].get('sequence_nr', 0)
-    if 'sequence_nr' in device['tuyaface']:
-        device['tuyaface']['sequence_nr'] = request_cnt + 1
 
     return _stitch_payload(payload_hb, request_cnt, command)
 
@@ -179,22 +175,37 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
         yield msg
 
 
-def _select_reply(replies: list):
+def _select_status_reply(replies: list):
     """
-    Find the first valid reply
+    Find the first valid status reply
     returns json str
     """
 
-    filtered_replies = list(filter(lambda x: x["data"] and x["data"] != 'json obj data unvalid', replies))
+    filtered_replies = list(filter(lambda x: x["data"] and x["cmd"] == tf.STATUS, replies))
     if len(filtered_replies) == 0:
         return None
     return filtered_replies[0]["data"]
 
 
+def _select_command_reply(replies: list, command: int, seq: int=None):
+    """
+    Find the last valid status reply
+    returns json str
+    """
+
+    filtered_replies = list(filter(lambda x: x["cmd"] == command, replies))
+    if seq is not None:
+        filtered_replies = list(filter(lambda x: x["seq"] == seq, filtered_replies))
+    if len(filtered_replies) == 0:
+        return None
+    if len(filtered_replies) > 1:
+        logger.info("Got multiple replies %s for request [%x:%s]", filtered_replies, command, tf.cmd_to_string.get(command, f'UNKNOWN'))
+    return filtered_replies[0]
+
+
 def _set_properties(device: dict):
     """
     Set default tuyaface properties
-    returns dict
     """
 
     device.setdefault('tuyaface', {
@@ -204,31 +215,43 @@ def _set_properties(device: dict):
         'pref_status_cmd': tf.DP_QUERY
     })
 
-    return device
 
-    
 def _status(device: dict, expect_reply: int = 1, recurse_cnt: int = 0):
     """
-    Sends current status request to the tuya device
+    Sends current status request to the tuya device and waits for status update
     returns json str
     """
 
     _set_properties(device)
+    cmd = device['tuyaface']['pref_status_cmd']
 
-    replies = list(reply for reply in _send_request(
-            device, 
-            device['tuyaface']['pref_status_cmd'], 
-            None, 
-            expect_reply
-        )
-    )
+    request_cnt = _send_request(device, cmd, None)
 
-    reply = _select_reply(replies)
-    if not reply and recurse_cnt < 3 and device['tuyaface']['availability']:
-        # some devices (ie LSC Bulbs) only offer partial status with CONTROL_NEW instead of DP_QUERY
-        device['tuyaface']['pref_status_cmd'] = tf.CONTROL_NEW
-        reply = _status(device, 2, recurse_cnt + 1)
-    return reply
+    replies = []
+    new_replies = [None]
+    request_reply = None
+    status_reply = None
+
+    # There might already be data waiting in the socket, e.g. a heartbeat reply, continue reading until
+    # the expected response has been received or there is a timeout
+    while new_replies and not request_reply:
+        new_replies = list(reply for reply in _receive_replies(device, expect_reply))
+        replies = replies + new_replies
+        request_reply = _select_command_reply(new_replies, cmd, request_cnt)
+        status_reply = _select_status_reply(new_replies)
+
+    # If there is valid reply to tf.DP_QUERY, use it as status reply
+    if cmd == tf.DP_QUERY and request_reply["data"] and request_reply["data"] != 'json obj data unvalid':
+        status_reply = request_reply
+
+    if not status_reply and recurse_cnt < 3 and device['tuyaface']['availability']:
+        if request_reply and request_reply["data"] == 'json obj data unvalid':
+            # some devices (ie LSC Bulbs) only offer partial status with CONTROL_NEW instead of DP_QUERY
+            device['tuyaface']['pref_status_cmd'] = tf.CONTROL_NEW
+        status_reply, new_replies = _status(device, 2, recurse_cnt + 1)
+        replies = replies + new_replies
+
+    return (status_reply, replies)
 
 
 def status(device: dict):
@@ -238,12 +261,14 @@ def status(device: dict):
     """
     
     #TODO: validate/sanitize request
-    reply = _status(device)
+    reply, _ = _status(device)
+    if not reply:
+        reply = '{}'
     logger.debug("reply: '%s'", reply)
     return json.loads(reply)
 
 
-def set_status(device: dict, dps: dict):
+def _set_status(device: dict, dps: dict):
     """
     Sends status update request to the tuya device
     returns dict
@@ -252,13 +277,36 @@ def set_status(device: dict, dps: dict):
 
     #TODO: validate/sanitize request
     tmp = { str(k):v for k,v in dps.items() }
-    replies = list(reply for reply in _send_request(device, tf.CONTROL, tmp, 2))
+    request_cnt = _send_request(device, tf.CONTROL, tmp)
 
-    reply = _select_reply(replies)
-    if not reply:
-        reply = '{}'
-    logger.debug("reply: %s", reply)
-    return json.loads(reply)
+    replies = []
+    new_replies = [None]
+    request_reply = None
+    status_reply = None
+
+    # There might already be data waiting in the socket, e.g. a heartbeat reply, continue reading until
+    # the expected response has been received or there is a timeout
+    while new_replies and not request_reply:
+        new_replies = list(reply for reply in _receive_replies(device, 2))
+        replies = replies + new_replies
+        request_reply = _select_command_reply(new_replies, tf.CONTROL, request_cnt)
+        status_reply = _select_status_reply(new_replies)
+
+    return (status_reply, replies)
+
+
+def set_status(device: dict, dps: dict):
+    """
+    Sends status update request to the tuya device
+    returns dict
+    """
+
+    status_reply, _ = _set_status(device, dps)
+
+    if not status_reply:
+        status_reply = '{}'
+    logger.debug("status_reply: %s", status_reply)
+    return json.loads(status_reply)
 
 
 def set_state(device: dict, value: bool, idx: int = 1):
@@ -294,27 +342,11 @@ def _connect(device: dict, timeout:int = 2):
         raise e
 
 
-def _send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None, max_receive_cnt: int = 1):
-    """
-    Connects to the tuya device and sends the request
-    returns json str or str (error)
-    """
-
+def _receive_replies(device: dict, max_receive_cnt):
     if max_receive_cnt <= 0:
         return
 
     connection = device['tuyaface']['connection']
-    if not connection:
-        _connect(device)
-        connection = device['tuyaface']['connection']
-
-    if command >= 0:
-        request = _generate_payload(device, command, payload)
-        logger.debug("sending command: [%x:%s] payload: [%s]", command, tf.cmd_to_string.get(command, f'UNKNOWN'), payload)
-        try:
-            connection.send(request)
-        except Exception as e:
-            raise e
 
     try:
         data = connection.recv(4096)
@@ -328,4 +360,30 @@ def _send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None
         pass
     except Exception as e:
         raise e
-    yield from _send_request(device, -1, None, max_receive_cnt-1)
+
+    yield from _receive_replies(device, max_receive_cnt-1)
+
+
+def _send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None):
+    """
+    Connects to the tuya device and sends the request
+    returns request counter of the sent request
+    """
+
+    connection = device['tuyaface']['connection']
+    if not connection:
+        _connect(device)
+        connection = device['tuyaface']['connection']
+
+    request_cnt = device['tuyaface'].get('sequence_nr', 0)
+    if 'sequence_nr' in device['tuyaface']:
+        device['tuyaface']['sequence_nr'] = request_cnt + 1
+
+    request = _generate_payload(device, command, payload, request_cnt)
+    logger.debug("sending command: [%x:%s] payload: [%s]", command, tf.cmd_to_string.get(command, f'UNKNOWN'), payload)
+    try:
+        connection.send(request)
+    except Exception as e:
+        raise e
+
+    return request_cnt
