@@ -70,7 +70,7 @@ class TuyaClient(threading.Thread):
 
         if self.on_connection:
             self.on_connection(True)
-        self._reset_pong()
+        self._pong()
 
     def _interrupt(self):
 
