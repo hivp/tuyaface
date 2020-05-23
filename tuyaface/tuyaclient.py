@@ -23,7 +23,6 @@ class TuyaClient(threading.Thread):
         self.connection = None
         _set_properties(device)        
         self.device = device
-        self.device['seq'] = 1
         self.force_reconnect = False
         self.last_ping = 0
         self.last_pong = time.time()
@@ -130,11 +129,15 @@ class TuyaClient(threading.Thread):
                                     if self.on_status:
                                         self.on_status(json_reply)
                             else:
-                                # If the socket is in the read list, but no data, sleep
+                                # This may happen if the Tuya device has reached its maximum number of clients,
+                                # sleep to prevent a cycle of repeatedly reconnecting
                                 force_sleep = True
                         except socket.error:
                             logger.exception("TuyaClient: exception when reading from socket", exc_info=False)
                             self.force_reconnect = True
+                            # This may happen if the Tuya device has reached its maximum number of clients,
+                            # sleep to prevent a cycle of repeatedly reconnecting
+                            force_sleep = True
 
                     if self.socketpair[0] in can_read:
                         # Clear the socket's buffer
