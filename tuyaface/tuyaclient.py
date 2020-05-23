@@ -6,7 +6,7 @@ import socket
 import threading
 import time
 
-from . import (_connect, _process_raw_reply, _send_request, _set_properties, set_state, status, tf)
+from . import (_connect, _process_raw_reply, _select_command_reply, _send_request, _set_properties, _set_status, _status, tf)
 
 logger = logging.getLogger(__name__)
 
@@ -41,15 +41,12 @@ class TuyaClient(threading.Thread):
         self.last_ping = time.time()
         try:
             logger.debug("TuyaClient: PING")
-            replies = list(reply for reply in _send_request(self.device, tf.HEART_BEAT))
-            if replies:
-                logger.debug("TuyaClient: PONG %s", replies)
-                self._reset_pong()
+            _send_request(self.device, tf.HEART_BEAT)
         except socket.error:
             self.force_reconnect = True
 
 
-    def _reset_pong(self):
+    def _pong(self):
         """ Reset expired counter. """
 
         self.last_pong = time.time()
@@ -124,10 +121,11 @@ class TuyaClient(threading.Thread):
                             if data:
                                 for reply in _process_raw_reply(self.device, data):
                                     logger.debug("TuyaClient: Got msg %s", reply)
-                                    json_reply = None
-                                    if reply["data"]:
+                                    if reply["cmd"] == tf.HEART_BEAT:
+                                        logger.debug("TuyaClient: PONG")
+                                        self._pong()
+                                    if self.on_status and reply["cmd"] == tf.STATUS and reply["data"]:
                                         json_reply = json.loads(reply["data"])
-                                    if self.on_status:
                                         self.on_status(json_reply)
                             else:
                                 # If the socket is in the read list, but no data, sleep
@@ -167,8 +165,14 @@ class TuyaClient(threading.Thread):
 
         if self.connection == None:
             self._connect()
-        try:            
-            data = status(self.device)
+        try:
+            status_reply, all_replies = _status(self.device)
+            heartbeat = _select_command_reply(all_replies, tf.HEART_BEAT)
+            if heartbeat:
+                self._pong()
+            if not status_reply:
+                status_reply = '{}'
+            data = json.loads(status_reply)
             return data
         except socket.error:
             self.force_reconnect = True
@@ -192,7 +196,13 @@ class TuyaClient(threading.Thread):
         if self.connection == None:
             self._connect()
         try:
-            data = set_state(self.device, value, idx)
+            status_reply, all_replies = _set_status(self.device, {idx: value})
+            heartbeat = _select_command_reply(all_replies, tf.HEART_BEAT)
+            if heartbeat:
+                self._pong()
+            if not status_reply:
+                status_reply = '{}'
+            data = json.loads(status_reply)
             return data
         except socket.error:
             self.force_reconnect = True
