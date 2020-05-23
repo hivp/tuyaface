@@ -114,7 +114,12 @@ class TuyaClient(threading.Thread):
                     #print(self.device)
                     # poll the socket, as well as the socketpair to allow us to be interrupted
                     rlist = [self.connection, self.socketpair[0]]
-                    can_read, _, _ = select.select(rlist, [], [], HEART_BEAT_PING_TIME/2)
+                    can_read = []
+                    try:
+                        can_read, _, _ = select.select(rlist, [], [], HEART_BEAT_PING_TIME/2)
+                    except ValueError:
+                        logger.exception("TuyaClient: exception when waiting for socket", exc_info=False)
+                        self.force_reconnect = True
                     if self.connection in can_read:
                         try:
                             data = self.connection.recv(4096)
@@ -130,7 +135,7 @@ class TuyaClient(threading.Thread):
                             else:
                                 # If the socket is in the read list, but no data, sleep
                                 force_sleep = True
-                        except (socket.error, ValueError):
+                        except socket.error:
                             logger.exception("TuyaClient: exception when reading from socket", exc_info=False)
                             self.force_reconnect = True
 
