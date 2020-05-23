@@ -6,9 +6,9 @@ import binascii
 from hashlib import md5
 import logging
 
-from tuyaface import aescipher
-from tuyaface import const as tf
-from tuyaface.helper import *
+from . import aescipher
+from . import const as tf
+from .helper import *
 
 logger = logging.getLogger(__name__)
 
