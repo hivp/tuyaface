@@ -130,7 +130,7 @@ class TuyaClient(threading.Thread):
                             else:
                                 # If the socket is in the read list, but no data, sleep
                                 force_sleep = True
-                        except socket.error:
+                        except (socket.error, ValueError):
                             logger.exception("TuyaClient: exception when reading from socket", exc_info=False)
                             self.force_reconnect = True
 
