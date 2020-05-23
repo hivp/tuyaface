@@ -223,12 +223,9 @@ def _status(device: dict, expect_reply: int = 1, recurse_cnt: int = 0):
     """
 
     _set_properties(device)
+    cmd = device['tuyaface']['pref_status_cmd']
 
-    request_cnt = _send_request(
-            device, 
-            device['tuyaface']['pref_status_cmd'],
-            None
-        )
+    request_cnt = _send_request(device, cmd, None)
 
     replies = []
     new_replies = [None]
@@ -240,8 +237,12 @@ def _status(device: dict, expect_reply: int = 1, recurse_cnt: int = 0):
     while new_replies and not request_reply:
         new_replies = list(reply for reply in _receive_replies(device, expect_reply))
         replies = replies + new_replies
-        request_reply = _select_command_reply(new_replies, device['tuyaface']['pref_status_cmd'], request_cnt)
+        request_reply = _select_command_reply(new_replies, cmd, request_cnt)
         status_reply = _select_status_reply(new_replies)
+
+    # If there is valid reply to tf.DP_QUERY, use it as status reply
+    if cmd == tf.DP_QUERY and request_reply["data"] and request_reply["data"] != 'json obj data unvalid':
+        status_reply = request_reply
 
     if not status_reply and recurse_cnt < 3 and device['tuyaface']['availability']:
         if request_reply and request_reply["data"] == 'json obj data unvalid':
