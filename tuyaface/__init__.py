@@ -171,6 +171,7 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
         msg = {"cmd": cmd, "seq": seq, "data": payload}
         if has_return_code:
             msg['rc'] = rc
+        logger.debug("(%s) received msg (seq %s): [%x:%s] rc: [%s] payload: [%s]", device["ip"], msg['seq'], msg['cmd'], tf.cmd_to_string.get(msg['cmd'], f'UNKNOWN'), rc if has_return_code else '-', msg.get('data', ''))
         yield msg
 
 
@@ -188,7 +189,7 @@ def _select_status_reply(replies: list):
 
 def _select_command_reply(replies: list, command: int, seq: int=None):
     """
-    Find the last valid status reply
+    Find a valid command reply
     returns dict
     """
 
@@ -265,7 +266,7 @@ def status(device: dict):
     reply, _ = _status(device)
     if not reply:
         reply = {'data':'{}'}
-    logger.debug("reply: '%s'", reply)
+    logger.debug("(%s) reply: '%s'", device["ip"], reply)
     return json.loads(reply["data"])
 
 
@@ -306,7 +307,7 @@ def set_status(device: dict, dps: dict):
 
     if not status_reply:
         reply = {'data':'{}'}
-    logger.debug("status_reply: %s", status_reply)
+    logger.debug("(%s) status_reply: %s", device["ip"], status_reply)
     return json.loads(status_reply["data"])
 
 
@@ -329,7 +330,7 @@ def _connect(device: dict, timeout:int = 2):
 
     connection = None
 
-    logger.info('Connecting to %s' % device['ip'])
+    logger.info('(%s) Connecting to %s', device["ip"], device['ip'])
     try:
         connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
@@ -339,7 +340,7 @@ def _connect(device: dict, timeout:int = 2):
         device['tuyaface']['availability'] = True
         return connection
     except Exception as e:
-        logger.warning('Failed to connect to %s. Retry in %d seconds' % (device['ip'], 1))
+        logger.warning('(%s) Failed to connect to %s. Retry in %d seconds', device["ip"], (device['ip'], 1))
         raise e
 
 
@@ -351,10 +352,9 @@ def _receive_replies(device: dict, max_receive_cnt):
 
     try:
         data = connection.recv(4096)
+        #logger.debug("(%s) read from socket: '%s'", device["ip"], ''.join(format(x, '02x') for x in data))
 
         for reply in _process_raw_reply(device, data):
-            if reply:
-                logger.debug("received msg (seq %s): [%x:%s] '%s'", reply['seq'], reply['cmd'], tf.cmd_to_string.get(reply['cmd'], f'UNKNOWN'), reply.get('data', ''))
             yield reply
     except socket.timeout as e:
         device['tuyaface']['availability'] = False
@@ -381,7 +381,8 @@ def _send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None
         device['tuyaface']['sequence_nr'] = request_cnt + 1
 
     request = _generate_payload(device, command, payload, request_cnt)
-    logger.debug("sending command: [%x:%s] payload: [%s]", command, tf.cmd_to_string.get(command, f'UNKNOWN'), payload)
+    logger.debug("(%s) sending msg (seq %s): [%x:%s] payload: [%s]", device["ip"], request_cnt, command, tf.cmd_to_string.get(command, f'UNKNOWN'), payload)
+    #logger.debug("(%s) write to socket: '%s'", device["ip"], ''.join(format(x, '02x') for x in request))
     try:
         connection.send(request)
     except Exception as e:
