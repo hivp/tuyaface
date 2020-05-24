@@ -340,7 +340,7 @@ def _connect(device: dict, timeout:int = 2):
         device['tuyaface']['availability'] = True
         return connection
     except Exception as e:
-        logger.warning('(%s) Failed to connect to %s. Retry in %d seconds', device["ip"], (device['ip'], 1))
+        logger.warning('(%s) Failed to connect to %s. Retry in %d seconds', device["ip"], device['ip'], 1)
         raise e
 
 
