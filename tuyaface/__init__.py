@@ -149,7 +149,6 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
         if crc != binascii.crc32(sbytes[:-8]):
             continue
 
-        crc2 = binascii.crc32(sbytes[:-8])
         if device['protocol'] == '3.1':
             
             data = sbytes[20:-8]
@@ -178,19 +177,19 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
 def _select_status_reply(replies: list):
     """
     Find the first valid status reply
-    returns json str
+    returns dict
     """
 
     filtered_replies = list(filter(lambda x: x["data"] and x["cmd"] == tf.STATUS, replies))
     if len(filtered_replies) == 0:
         return None
-    return filtered_replies[0]["data"]
+    return filtered_replies[0]
 
 
 def _select_command_reply(replies: list, command: int, seq: int=None):
     """
     Find the last valid status reply
-    returns json str
+    returns dict
     """
 
     filtered_replies = list(filter(lambda x: x["cmd"] == command, replies))
@@ -219,7 +218,7 @@ def _set_properties(device: dict):
 def _status(device: dict, expect_reply: int = 1, recurse_cnt: int = 0):
     """
     Sends current status request to the tuya device and waits for status update
-    returns json str
+    returns (dict, list(dict))
     """
 
     _set_properties(device)
@@ -234,15 +233,17 @@ def _status(device: dict, expect_reply: int = 1, recurse_cnt: int = 0):
 
     # There might already be data waiting in the socket, e.g. a heartbeat reply, continue reading until
     # the expected response has been received or there is a timeout
-    while new_replies and not request_reply:
+    # If status is triggered by DP_QUERY, the status is in a DP_QUERY message
+    # If status is triggered by CONTROL_NEW, the status is a STATUS message
+    while new_replies and (not request_reply or (cmd == tf.CONTROL_NEW and not status_reply)):
         new_replies = list(reply for reply in _receive_replies(device, expect_reply))
         replies = replies + new_replies
-        request_reply = _select_command_reply(new_replies, cmd, request_cnt)
-        status_reply = _select_status_reply(new_replies)
+        request_reply = _select_command_reply(replies, cmd, request_cnt)
+        status_reply = _select_status_reply(replies)
 
     # If there is valid reply to tf.DP_QUERY, use it as status reply
     if cmd == tf.DP_QUERY and request_reply["data"] and request_reply["data"] != 'json obj data unvalid':
-        status_reply = request_reply["data"]
+        status_reply = request_reply
 
     if not status_reply and recurse_cnt < 3 and device['tuyaface']['availability']:
         if request_reply and request_reply["data"] == 'json obj data unvalid':
@@ -263,15 +264,15 @@ def status(device: dict):
     #TODO: validate/sanitize request
     reply, _ = _status(device)
     if not reply:
-        reply = '{}'
+        reply = {'data':'{}'}
     logger.debug("reply: '%s'", reply)
-    return json.loads(reply)
+    return json.loads(reply["data"])
 
 
 def _set_status(device: dict, dps: dict):
     """
-    Sends status update request to the tuya device
-    returns dict
+    Sends status update request to the tuya device and waits for status update
+    returns (dict, list(dict))
     """
     _set_properties(device)
 
@@ -286,27 +287,27 @@ def _set_status(device: dict, dps: dict):
 
     # There might already be data waiting in the socket, e.g. a heartbeat reply, continue reading until
     # the expected response has been received or there is a timeout
-    while new_replies and not request_reply:
+    while new_replies and (not request_reply or not status_reply):
         new_replies = list(reply for reply in _receive_replies(device, 2))
         replies = replies + new_replies
-        request_reply = _select_command_reply(new_replies, tf.CONTROL, request_cnt)
-        status_reply = _select_status_reply(new_replies)
+        request_reply = _select_command_reply(replies, tf.CONTROL, request_cnt)
+        status_reply = _select_status_reply(replies)
 
     return (status_reply, replies)
 
 
 def set_status(device: dict, dps: dict):
     """
-    Sends status update request to the tuya device
+    Sends status update request to the tuya device and waits for status update
     returns dict
     """
 
     status_reply, _ = _set_status(device, dps)
 
     if not status_reply:
-        status_reply = '{}'
+        reply = {'data':'{}'}
     logger.debug("status_reply: %s", status_reply)
-    return json.loads(status_reply)
+    return json.loads(status_reply["data"])
 
 
 def set_state(device: dict, value: bool, idx: int = 1):

@@ -179,8 +179,8 @@ class TuyaClient(threading.Thread):
             if heartbeat:
                 self._pong()
             if not status_reply:
-                status_reply = '{}'
-            data = json.loads(status_reply)
+                status_reply = {"data":"{}"}
+            data = json.loads(status_reply["data"])
             return data
         except socket.error:
             self.force_reconnect = True
@@ -209,8 +209,8 @@ class TuyaClient(threading.Thread):
             if heartbeat:
                 self._pong()
             if not status_reply:
-                status_reply = '{}'
-            data = json.loads(status_reply)
+                status_reply = {"data":"{}"}
+            data = json.loads(status_reply["data"])
             return data
         except socket.error:
             self.force_reconnect = True
