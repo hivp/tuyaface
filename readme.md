@@ -107,20 +107,22 @@ dps = {
 ```
 
 
-Todo *v1.1.8*
+Todo *v1.3.0*
 ==================
 - validate/sanitize request
+- throttle reconnect requests #48
+- Pre-commit triggers (black, mypy, flake, etc) #54
 
 Changelog
 ==================
-*v1.1.7*
+*v1.2.0*
+- WIP #44 sequence_nr
+- WIP #44 connection
+- Store preferred status command in device dict #43
+- Nest tuyaface values in device: dict #44
+- Improve message parsing #47
 
-- added tuyaclient
-- Correct message header generation
-- fix typo in decrypt
-
-
-https://github.com/TradeFace/tuya/wiki
+Earlier changes https://github.com/TradeFace/tuya/wiki
 
 Implementations
 ================
