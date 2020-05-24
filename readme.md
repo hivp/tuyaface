@@ -107,17 +107,20 @@ dps = {
 ```
 
 
-Todo *v1.2.0*
+Todo *v1.3.0*
 ==================
 - validate/sanitize request
-- Store preferred status command in device dict #43
-- Nest tuyaface values in device: dict #44
+- throttle reconnect requests #48
+- Pre-commit triggers (black, mypy, flake, etc) #54
 
 Changelog
 ==================
 *v1.2.0*
 - WIP #44 sequence_nr
 - WIP #44 connection
+- Store preferred status command in device dict #43
+- Nest tuyaface values in device: dict #44
+- Improve message parsing #47
 
 Earlier changes https://github.com/TradeFace/tuya/wiki
 
