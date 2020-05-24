@@ -237,7 +237,7 @@ def _status(device: dict, expect_reply: int = 1, recurse_cnt: int = 0):
     # If status is triggered by DP_QUERY, the status is in a DP_QUERY message
     # If status is triggered by CONTROL_NEW, the status is a STATUS message
     while new_replies and (not request_reply or (cmd == tf.CONTROL_NEW and not status_reply)):
-        new_replies = list(reply for reply in _receive_replies(device, expect_reply))
+        new_replies = list(reply for reply in _receive_replies(device, 1))
         replies = replies + new_replies
         request_reply = _select_command_reply(replies, cmd, request_cnt)
         status_reply = _select_status_reply(replies)
@@ -272,7 +272,7 @@ def status(device: dict):
 
 def _set_status(device: dict, dps: dict):
     """
-    Sends status update request to the tuya device and waits for status update
+    Sends state update request to the tuya device and waits for response
     returns (dict, list(dict))
     """
     _set_properties(device)
@@ -284,37 +284,35 @@ def _set_status(device: dict, dps: dict):
     replies = []
     new_replies = [None]
     request_reply = None
-    status_reply = None
 
     # There might already be data waiting in the socket, e.g. a heartbeat reply, continue reading until
     # the expected response has been received or there is a timeout
-    while new_replies and (not request_reply or not status_reply):
-        new_replies = list(reply for reply in _receive_replies(device, 2))
+    while new_replies and not request_reply:
+        new_replies = list(reply for reply in _receive_replies(device, 1))
         replies = replies + new_replies
         request_reply = _select_command_reply(replies, tf.CONTROL, request_cnt)
-        status_reply = _select_status_reply(replies)
 
-    return (status_reply, replies)
+    return (request_reply, replies)
 
 
 def set_status(device: dict, dps: dict):
     """
-    Sends status update request to the tuya device and waits for status update
-    returns dict
+    Sends state update request to the tuya device and waits for response
+    returns bool
     """
 
-    status_reply, _ = _set_status(device, dps)
+    reply, _ = _set_status(device, dps)
 
-    if not status_reply:
-        reply = {'data':'{}'}
-    logger.debug("(%s) status_reply: %s", device["ip"], status_reply)
-    return json.loads(status_reply["data"])
+    logger.debug("(%s) reply: %s", device["ip"], reply)
+    if not reply or ("rc" in reply and reply["rc"] != 0):
+        return False
+    return True
 
 
 def set_state(device: dict, value: bool, idx: int = 1):
     """
     Sends status update request for one dps value to the tuya device
-    returns dict
+    returns bool
     """
 
     # turn a device on / off
