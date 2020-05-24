@@ -105,7 +105,7 @@ class TuyaClient(threading.Thread):
                         logger.info("(%s) connected", self.device["ip"])
                         continue
                     except Exception:
-                        logger.exception("(%s) exception when opening socket", self.device["ip"])
+                        logger.exception("(%s) exception when opening socket", self.device["ip"], exc_info=False)
 
                 if self.device['tuyaface']['connection']:
                     # poll the socket, as well as the socketpair to allow us to be interrupted
@@ -114,7 +114,7 @@ class TuyaClient(threading.Thread):
                     try:
                         can_read, _, _ = select.select(rlist, [], [], HEART_BEAT_PING_TIME/2)
                     except ValueError:
-                        logger.exception("(%s) exception when waiting for socket", self.device["ip"], exc_info=True)
+                        logger.exception("(%s) exception when waiting for socket", self.device["ip"], exc_info=False)
                         self.force_reconnect = True
                     if self.device['tuyaface']['connection'] in can_read:
                         try:
