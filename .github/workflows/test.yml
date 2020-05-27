@@ -23,6 +23,9 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install -r requirements_test.txt
+      - name: Lint with flake8
+        run: |
+          flake8 tuyaface
       - name: Check formatting with black
         run: |
           black tuyaface --check
