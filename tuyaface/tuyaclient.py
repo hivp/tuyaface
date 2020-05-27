@@ -205,7 +205,7 @@ class TuyaClient(threading.Thread):
                 return
         try:
             status_reply, all_replies = _status(self.device)
-            heartbeat = _select_command_reply(all_replies, tf.HEART_BEAT)
+            heartbeat = _select_command_reply(self.device, all_replies, tf.HEART_BEAT)
             if heartbeat:
                 self._pong()
             if not status_reply:
