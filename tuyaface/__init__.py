@@ -207,7 +207,7 @@ def _select_command_reply(device: dict, replies: list, command: int, seq: int = 
 
     status_reply = _select_status_reply(replies)
     if status_reply:
-        device["tuyaface"]['status'] = status_reply
+        device["tuyaface"]["status"] = status_reply
 
     filtered_replies = list(filter(lambda x: x["cmd"] == command, replies))
     if seq is not None:
@@ -299,7 +299,7 @@ def status(device: dict):
     if not reply:
         reply = {"data": "{}"}
     logger.debug("(%s) reply: '%s'", device["ip"], reply)
-    device["tuyaface"]['status'] = reply["data"]
+    device["tuyaface"]["status"] = reply["data"]
     return json.loads(reply["data"])
 
 
@@ -351,7 +351,7 @@ def set_state(device: dict, value: bool, idx: int = 1):
     returns bool
     """
 
-    # turn a device on / off
+    # turn a device on/off
     return set_status(device, {idx: value})
 
 
