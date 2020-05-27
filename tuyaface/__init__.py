@@ -30,9 +30,7 @@ def _generate_json_data(device_id: str, command: int, data: dict):
         tf.DP_QUERY_NEW: {"devId": "", "uid": "", "t": ""},
     }
 
-    json_data = {}
-    if command in payload_dict:
-        json_data = payload_dict[command]
+    json_data = payload_dict.get(command, {})
 
     if "gwId" in json_data:
         json_data["gwId"] = device_id
@@ -80,11 +78,11 @@ def _generate_payload(
 
         if command == tf.CONTROL:
             payload_crypt = aescipher.encrypt(device["localkey"], payload_json)
-            preMd5String = (
+            premd5string = (
                 b"data=" + payload_crypt + b"||lpv=" + b"3.1||" + device["localkey"]
             )
             m = md5()
-            m.update(preMd5String)
+            m.update(premd5string)
             hexdigest = m.hexdigest()
 
             header_payload_hb = b"3.1" + hexdigest[8:][:16].encode("latin1")
@@ -129,10 +127,8 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
     returns json str or str (error)
     """
 
-    a = BitArray(raw_reply)
-
     # TODO: don't overwrite variables
-    for s in a.split("0x000055aa", bytealigned=True):
+    for s in BitArray(raw_reply).split("0x000055aa", bytealigned=True):
         sbytes = s.tobytes()
         payload = None
 
@@ -143,9 +139,9 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
         # Parse header
         seq = int.from_bytes(sbytes[4:8], byteorder="big")
         cmd = int.from_bytes(sbytes[8:12], byteorder="big")
-        sz = int.from_bytes(sbytes[12:16], byteorder="big")
-        rc = int.from_bytes(sbytes[16:20], byteorder="big")
-        has_return_code = (rc & 0xFFFFFF00) == 0
+        size = int.from_bytes(sbytes[12:16], byteorder="big")
+        return_code = int.from_bytes(sbytes[16:20], byteorder="big")
+        has_return_code = (return_code & 0xFFFFFF00) == 0
         crc = int.from_bytes(sbytes[-8:-4], byteorder="big")
 
         # Check CRC
@@ -166,22 +162,22 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
                 payload = aescipher.decrypt(device["localkey"], data)
 
         elif device["protocol"] == "3.3":
-            if sz > 12:
-                data = sbytes[20 : 8 + sz]
+            if size > 12:
+                data = sbytes[20 : 8 + size]
                 if cmd == tf.STATUS:
                     data = data[15:]
                 payload = aescipher.decrypt(device["localkey"], data, False)
 
         msg = {"cmd": cmd, "seq": seq, "data": payload}
         if has_return_code:
-            msg["rc"] = rc
+            msg["rc"] = return_code
         logger.debug(
             "(%s) received msg (seq %s): [%x:%s] rc: [%s] payload: [%s]",
             device["ip"],
             msg["seq"],
             msg["cmd"],
-            tf.cmd_to_string.get(msg["cmd"], "UNKNOWN"),
-            rc if has_return_code else "-",
+            tf.CMD_TO_STRING.get(msg["cmd"], "UNKNOWN"),
+            return_code if has_return_code else "-",
             msg.get("data", ""),
         )
         yield msg
@@ -219,7 +215,7 @@ def _select_command_reply(replies: list, command: int, seq: int = None):
             "Got multiple replies %s for request [%x:%s]",
             filtered_replies,
             command,
-            tf.cmd_to_string.get(command, "UNKNOWN"),
+            tf.CMD_TO_STRING.get(command, "UNKNOWN"),
         )
     return filtered_replies[0]
 
@@ -372,14 +368,14 @@ def _connect(device: dict, timeout: int = 2):
         device["tuyaface"]["connection"] = connection
         device["tuyaface"]["availability"] = True
         return connection
-    except Exception as e:
+    except Exception as ex:
         logger.warning(
             "(%s) Failed to connect to %s. Retry in %d seconds",
             device["ip"],
             device["ip"],
             1,
         )
-        raise e
+        raise ex
 
 
 def _receive_replies(device: dict, max_receive_cnt):
@@ -396,9 +392,8 @@ def _receive_replies(device: dict, max_receive_cnt):
             yield reply
     except socket.timeout:
         device["tuyaface"]["availability"] = False
-        pass
-    except Exception as e:
-        raise e
+    except Exception as ex:
+        raise ex
 
     yield from _receive_replies(device, max_receive_cnt - 1)
 
@@ -425,13 +420,13 @@ def _send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None
         device["ip"],
         request_cnt,
         command,
-        tf.cmd_to_string.get(command, "UNKNOWN"),
+        tf.CMD_TO_STRING.get(command, "UNKNOWN"),
         payload,
     )
     # logger.debug("(%s) write to socket: '%s'", device["ip"], ''.join(format(x, '02x') for x in request))
     try:
         connection.send(request)
-    except Exception as e:
-        raise e
+    except Exception as ex:
+        raise ex
 
     return request_cnt

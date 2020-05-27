@@ -1,22 +1,15 @@
 """Helpers."""
-import sys
-
-IS_PY2 = sys.version_info[0] == 2
 
 
-def bytes2hex(x: bytes, pretty: bool = False):
+def bytes2hex(data: bytes, pretty: bool = False):
     """Render hexstring from bytes."""
     space = ""
     if pretty:
         space = " "
 
-    if IS_PY2:
-        return "".join("%02X%s" % (ord(y), space) for y in x)
-    return "".join("%02X%s" % (y, space) for y in x)
+    return "".join("%02X%s" % (x, space) for x in data)
 
 
-def hex2bytes(x: str):
+def hex2bytes(data: str):
     """Parse hexstring to bytes."""
-    if IS_PY2:
-        return x.decode("hex")
-    return bytes.fromhex(x)
+    return bytes.fromhex(data)
