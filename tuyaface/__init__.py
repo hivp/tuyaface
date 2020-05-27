@@ -264,13 +264,12 @@ def _status(device: dict, expect_reply: int = 1, recurse_cnt: int = 0):
         status_reply = _select_status_reply(replies)
 
     # If there is valid reply to tf.DP_QUERY, use it as status reply
-
     if (
         cmd == tf.DP_QUERY
+        and request_reply
         and request_reply["data"]
         and request_reply["data"] != "json obj data unvalid"
     ):
-
         status_reply = request_reply
 
     if not status_reply and recurse_cnt < 3 and device["tuyaface"]["availability"]:
