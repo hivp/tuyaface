@@ -25,4 +25,4 @@ jobs:
           pip install -r requirements_test.txt
       - name: Check formatting with black
         run: |
-          black pychromecast --check
+          black tuyaface --check
