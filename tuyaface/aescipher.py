@@ -1,9 +1,10 @@
+"""Helpers for AES crypto."""
 import base64
 from Cryptodome.Cipher import AES
 
 
 def encrypt(key, raw, use_base64=True):
-
+    """Encrypt and optionally base64-encode."""
     crypted_text = _cipher(key).encrypt(_pad(raw))
 
     if use_base64:
@@ -12,7 +13,7 @@ def encrypt(key, raw, use_base64=True):
 
 
 def decrypt(key, enc, use_base64=True):
-
+    """Optionally base64-decode and decrypt."""
     decoded = enc
     if use_base64:
         decoded = base64.b64decode(enc)
