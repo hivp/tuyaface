@@ -26,6 +26,9 @@ jobs:
       - name: Lint with flake8
         run: |
           flake8 tuyaface
+      - name: Lint with pylint
+        run: |
+          pylint tuyaface
       - name: Check formatting with black
         run: |
           black tuyaface --check

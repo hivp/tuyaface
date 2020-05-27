@@ -27,9 +27,8 @@ def _cipher(key):
 
 
 def _pad(s):
-    # self.bs = 32  # 32 work fines for ON, does not work for OFF. Padding different compared to js version https://github.com/codetheweb/tuyapi/
-    bs = 16
-    padnum = bs - len(s) % bs
+    blocksize = 16
+    padnum = blocksize - len(s) % blocksize
     return s + padnum * chr(padnum).encode()
 
 

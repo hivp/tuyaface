@@ -32,7 +32,7 @@ LAN_CHECK_GW_UPDATE = 250
 LAN_GW_UPDATE = 251
 LAN_SET_GW_CHANNEL = 252
 
-cmd_to_string = {
+CMD_TO_STRING = {
     0: "UDP",
     1: "AP_CONFIG",
     2: "ACTIVE",

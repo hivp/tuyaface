@@ -90,10 +90,10 @@ class TuyaClient(threading.Thread):
             # The socketpair may already be closed during shutdown, ignore it
             pass
 
-    # TODO: nested too deep, split up in functions
     def run(self):
         """Tuya client main loop."""
-        while not self.stop.is_set():
+        # TODO: nested too deep, split up in functions
+        while not self.stop.is_set():  # pylint: disable=too-many-nested-blocks
             try:
                 force_sleep = False
                 if self.force_reconnect:
@@ -102,7 +102,7 @@ class TuyaClient(threading.Thread):
                     if self.device["tuyaface"]["connection"]:
                         try:
                             self.device["tuyaface"]["connection"].close()
-                        except Exception:
+                        except socket.error:
                             logger.exception(
                                 "(%s) exception when closing socket",
                                 self.device["ip"],
@@ -119,7 +119,7 @@ class TuyaClient(threading.Thread):
                         self._connect()
                         logger.info("(%s) connected", self.device["ip"])
                         continue
-                    except Exception:
+                    except socket.error:
                         logger.exception(
                             "(%s) exception when opening socket",
                             self.device["ip"],
@@ -186,7 +186,7 @@ class TuyaClient(threading.Thread):
 
                 if not self.device["tuyaface"]["connection"] or force_sleep:
                     time.sleep(HEART_BEAT_PING_TIME / 2)
-            except Exception:
+            except Exception:  # pylint: disable=broad-except
                 logger.exception("(%s) Unexpected exception", self.device["ip"])
 
     def stop_client(self):
@@ -199,7 +199,10 @@ class TuyaClient(threading.Thread):
     def _status(self, _):
 
         if self.device["tuyaface"]["connection"] is None:
-            self._connect()
+            try:
+                self._connect()
+            except socket.error:
+                return
         try:
             status_reply, all_replies = _status(self.device)
             heartbeat = _select_command_reply(all_replies, tf.HEART_BEAT)
@@ -227,7 +230,10 @@ class TuyaClient(threading.Thread):
     def _set_state(self, value: bool, idx: int = 1):
 
         if self.device["tuyaface"]["connection"] is None:
-            self._connect()
+            try:
+                self._connect()
+            except socket.error:
+                return
         try:
             reply, all_replies = _set_status(self.device, {idx: value})
             for reply in all_replies:
