@@ -211,7 +211,7 @@ class TuyaClient(threading.Thread):
             if not status_reply:
                 status_reply = {"data": "{}"}
             data = json.loads(status_reply["data"])
-            device["tuyaface"]['status'] = data
+            self.device["tuyaface"]['status'] = data
             return data
         except socket.error:
             self.force_reconnect = True

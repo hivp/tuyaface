@@ -198,17 +198,17 @@ def _select_status_reply(replies: list):
     return filtered_replies[0]
 
 
-def _select_command_reply(replies: list, command: int, seq: int = None):
+def _select_command_reply(device: dict, replies: list, command: int, seq: int = None):
     """
     Find a valid command reply.
 
     returns dict
     """
-    
+
     status_reply = _select_status_reply(replies)
     if status_reply:
         device["tuyaface"]['status'] = status_reply
-    
+
     filtered_replies = list(filter(lambda x: x["cmd"] == command, replies))
     if seq is not None:
         filtered_replies = list(filter(lambda x: x["seq"] == seq, filtered_replies))
@@ -265,7 +265,7 @@ def _status(device: dict, expect_reply: int = 1, recurse_cnt: int = 0):
     ):
         new_replies = list(reply for reply in _receive_replies(device, 1))
         replies = replies + new_replies
-        request_reply = _select_command_reply(replies, cmd, request_cnt)
+        request_reply = _select_command_reply(device, replies, cmd, request_cnt)
         status_reply = _select_status_reply(replies)
 
     # If there is valid reply to tf.DP_QUERY, use it as status reply
@@ -324,7 +324,7 @@ def _set_status(device: dict, dps: dict):
     while new_replies and not request_reply:
         new_replies = list(reply for reply in _receive_replies(device, 1))
         replies = replies + new_replies
-        request_reply = _select_command_reply(replies, tf.CONTROL, request_cnt)
+        request_reply = _select_command_reply(device, replies, tf.CONTROL, request_cnt)
 
     return (request_reply, replies)
 
