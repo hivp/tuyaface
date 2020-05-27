@@ -1,3 +1,4 @@
+"""Tuya constants."""
 UDP = 0
 AP_CONFIG = 1
 ACTIVE = 2

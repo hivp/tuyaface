@@ -1,3 +1,4 @@
+"""Helper to maintain a connection to and serialize access to a Tuya device."""
 import json
 import logging
 import queue
@@ -25,12 +26,12 @@ HEART_BEAT_PONG_TIME = 5
 
 
 class TuyaClient(threading.Thread):
-
-    """ Helper class to maintain a connection to and serialize access to a Tuya device. """
+    """Helper class to maintain a connection to and serialize access to a Tuya device."""
 
     def __init__(
         self, device: dict, on_status: callable = None, on_connection: callable = None
     ):
+        """Initialize the Tuya client."""
 
         super().__init__()
         _set_properties(device)
@@ -46,7 +47,7 @@ class TuyaClient(threading.Thread):
         self.stop = threading.Event()
 
     def _ping(self):
-        """ Send a ping message. """
+        """Send a ping message."""
 
         self.last_ping = time.time()
         try:
@@ -56,13 +57,13 @@ class TuyaClient(threading.Thread):
             self.force_reconnect = True
 
     def _pong(self):
-        """ Reset expired counter. """
+        """Reset expired counter."""
 
         logger.debug("(%s) PONG", self.device["ip"])
         self.last_pong = time.time()
 
     def _is_connection_stale(self):
-        """ Indicates if connection has expired. """
+        """Indicate if connection has expired."""
 
         if time.time() - self.last_ping > HEART_BEAT_PING_TIME:
             self._ping()
@@ -91,7 +92,7 @@ class TuyaClient(threading.Thread):
 
     # TODO: nested too deep, split up in functions
     def run(self):
-
+        """Tuya client main loop."""
         while not self.stop.is_set():
             try:
                 force_sleep = False
@@ -112,7 +113,7 @@ class TuyaClient(threading.Thread):
                         self.device["tuyaface"]["connection"] = None
                         continue
 
-                if self.device["tuyaface"]["connection"] == None:
+                if self.device["tuyaface"]["connection"] is None:
                     try:
                         logger.debug("(%s) connecting", self.device["ip"])
                         self._connect()
@@ -189,7 +190,7 @@ class TuyaClient(threading.Thread):
                 logger.exception("(%s) Unexpected exception", self.device["ip"])
 
     def stop_client(self):
-        """Close the connection and stop the worker thread"""
+        """Close the connection and stop the worker thread."""
 
         self.stop.set()
         self._interrupt()
@@ -197,7 +198,7 @@ class TuyaClient(threading.Thread):
 
     def _status(self, _):
 
-        if self.device["tuyaface"]["connection"] == None:
+        if self.device["tuyaface"]["connection"] is None:
             self._connect()
         try:
             status_reply, all_replies = _status(self.device)
@@ -212,7 +213,7 @@ class TuyaClient(threading.Thread):
             self.force_reconnect = True
 
     def status(self):
-
+        """Request status."""
         reply_queue = queue.Queue(1)
         self.command_queue.put((self._status, (None,), reply_queue))
         self._interrupt()
@@ -225,7 +226,7 @@ class TuyaClient(threading.Thread):
 
     def _set_state(self, value: bool, idx: int = 1):
 
-        if self.device["tuyaface"]["connection"] == None:
+        if self.device["tuyaface"]["connection"] is None:
             self._connect()
         try:
             reply, all_replies = _set_status(self.device, {idx: value})
@@ -242,7 +243,7 @@ class TuyaClient(threading.Thread):
             self.force_reconnect = True
 
     def set_state(self, value: bool, idx: int = 1):
-
+        """Set state."""
         reply_queue = queue.Queue(1)
         self.command_queue.put((self._set_state, (value, idx), reply_queue))
         self._interrupt()

@@ -1,3 +1,4 @@
+"""Functionality for communicating with a Tuya device."""
 import time
 import socket
 import json
@@ -8,15 +9,15 @@ import logging
 
 from . import aescipher
 from . import const as tf
-from .helper import *
+from .helper import hex2bytes
 
 logger = logging.getLogger(__name__)
 
 
 def _generate_json_data(device_id: str, command: int, data: dict):
-
     """
-    Fill the data structure for the command with the given values
+    Fill the data structure for the command with the given values.
+
     return: json str
     """
 
@@ -104,9 +105,7 @@ def _generate_payload(
 
 
 def _stitch_payload(payload_hb: bytes, request_cnt: int, command: int):
-    """
-    Joins the payload request parts together
-    """
+    """Join the payload request parts together."""
 
     command_hb = command.to_bytes(4, byteorder="big")
     request_cnt_hb = request_cnt.to_bytes(4, byteorder="big")
@@ -125,7 +124,8 @@ def _stitch_payload(payload_hb: bytes, request_cnt: int, command: int):
 
 def _process_raw_reply(device: dict, raw_reply: bytes):
     """
-    Splits the raw reply(s) into chuncks and decrypts it.
+    Split the raw reply(s) into chuncks and decrypts it.
+
     returns json str or str (error)
     """
 
@@ -180,7 +180,7 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
             device["ip"],
             msg["seq"],
             msg["cmd"],
-            tf.cmd_to_string.get(msg["cmd"], f"UNKNOWN"),
+            tf.cmd_to_string.get(msg["cmd"], "UNKNOWN"),
             rc if has_return_code else "-",
             msg.get("data", ""),
         )
@@ -189,7 +189,8 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
 
 def _select_status_reply(replies: list):
     """
-    Find the first valid status reply
+    Find the first valid status reply.
+
     returns dict
     """
 
@@ -203,7 +204,8 @@ def _select_status_reply(replies: list):
 
 def _select_command_reply(replies: list, command: int, seq: int = None):
     """
-    Find a valid command reply
+    Find a valid command reply.
+
     returns dict
     """
 
@@ -217,15 +219,13 @@ def _select_command_reply(replies: list, command: int, seq: int = None):
             "Got multiple replies %s for request [%x:%s]",
             filtered_replies,
             command,
-            tf.cmd_to_string.get(command, f"UNKNOWN"),
+            tf.cmd_to_string.get(command, "UNKNOWN"),
         )
     return filtered_replies[0]
 
 
 def _set_properties(device: dict):
-    """
-    Set default tuyaface properties
-    """
+    """Set default tuyaface properties."""
 
     device.setdefault(
         "tuyaface",
@@ -240,7 +240,8 @@ def _set_properties(device: dict):
 
 def _status(device: dict, expect_reply: int = 1, recurse_cnt: int = 0):
     """
-    Sends current status request to the tuya device and waits for status update
+    Send current status request to the tuya device and waits for status update.
+
     returns (dict, list(dict))
     """
 
@@ -288,7 +289,8 @@ def _status(device: dict, expect_reply: int = 1, recurse_cnt: int = 0):
 
 def status(device: dict):
     """
-    Requests status of the tuya device
+    Request status of the tuya device.
+
     returns dict
     """
 
@@ -302,7 +304,8 @@ def status(device: dict):
 
 def _set_status(device: dict, dps: dict):
     """
-    Sends state update request to the tuya device and waits response
+    Send state update request to the tuya device and waits response.
+
     returns (dict, list(dict))
     """
     _set_properties(device)
@@ -327,7 +330,8 @@ def _set_status(device: dict, dps: dict):
 
 def set_status(device: dict, dps: dict):
     """
-    Sends state update request to the tuya device and waits for response
+    Send state update request to the tuya device and waits for response.
+
     returns bool
     """
 
@@ -341,7 +345,8 @@ def set_status(device: dict, dps: dict):
 
 def set_state(device: dict, value: bool, idx: int = 1):
     """
-    Sends status update request for one dps value to the tuya device
+    Send status update request for one dps value to the tuya device.
+
     returns bool
     """
 
@@ -350,9 +355,9 @@ def set_state(device: dict, value: bool, idx: int = 1):
 
 
 def _connect(device: dict, timeout: int = 2):
-
     """
-    connects to the tuya device
+    Connect to the tuya device.
+
     returns connection object
     """
 
@@ -389,7 +394,7 @@ def _receive_replies(device: dict, max_receive_cnt):
 
         for reply in _process_raw_reply(device, data):
             yield reply
-    except socket.timeout as e:
+    except socket.timeout:
         device["tuyaface"]["availability"] = False
         pass
     except Exception as e:
@@ -400,7 +405,8 @@ def _receive_replies(device: dict, max_receive_cnt):
 
 def _send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None):
     """
-    Connects to the tuya device and sends the request
+    Connect to the tuya device and send a request.
+
     returns request counter of the sent request
     """
 
@@ -419,7 +425,7 @@ def _send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None
         device["ip"],
         request_cnt,
         command,
-        tf.cmd_to_string.get(command, f"UNKNOWN"),
+        tf.cmd_to_string.get(command, "UNKNOWN"),
         payload,
     )
     # logger.debug("(%s) write to socket: '%s'", device["ip"], ''.join(format(x, '02x') for x in request))
