@@ -204,7 +204,11 @@ def _select_command_reply(replies: list, command: int, seq: int = None):
 
     returns dict
     """
-
+    
+    status_reply = _select_status_reply(replies)
+    if status_reply:
+        device["tuyaface"]['status'] = status_reply
+    
     filtered_replies = list(filter(lambda x: x["cmd"] == command, replies))
     if seq is not None:
         filtered_replies = list(filter(lambda x: x["seq"] == seq, filtered_replies))
@@ -230,6 +234,7 @@ def _set_properties(device: dict):
             "connection": None,
             "availability": False,
             "pref_status_cmd": tf.DP_QUERY,
+            "status": None,
         },
     )
 
@@ -294,6 +299,7 @@ def status(device: dict):
     if not reply:
         reply = {"data": "{}"}
     logger.debug("(%s) reply: '%s'", device["ip"], reply)
+    device["tuyaface"]['status'] = reply["data"]
     return json.loads(reply["data"])
 
 
