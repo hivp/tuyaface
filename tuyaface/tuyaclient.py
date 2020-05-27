@@ -127,7 +127,7 @@ class TuyaClient(threading.Thread):
                         )
 
                 if self.device["tuyaface"]["connection"]:
-                    # poll the socket, as well as the socketpair to allow us to be interrupted
+                    # poll the socket, as well as the socketpair to allow us to be interrupted.
                     rlist = [self.device["tuyaface"]["connection"], self.socketpair[0]]
                     can_read = []
                     try:
@@ -211,7 +211,7 @@ class TuyaClient(threading.Thread):
             if not status_reply:
                 status_reply = {"data": "{}"}
             data = json.loads(status_reply["data"])
-            self.device["tuyaface"]['status'] = data
+            self.device["tuyaface"]["status"] = data
             return data
         except socket.error:
             self.force_reconnect = True
