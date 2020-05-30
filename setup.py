@@ -27,7 +27,7 @@ PyPi:
 
 here = os.path.abspath(os.path.dirname(__file__))
 
-readme_filename = os.path.join(here, "readme.md")
+readme_filename = os.path.join(here, "README.md")
 if os.path.exists(readme_filename):
     with codecs.open(readme_filename, encoding="utf-8") as f:
         long_description = f.read()

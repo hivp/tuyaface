@@ -1,5 +1,4 @@
-TuyaFace
-===================
+<p align="center"><img widht="50%" alt="TuyaFace logo" src="https://github.com/TradeFace/tuyamqtt/blob/development/docs/tuyaface_logo.png?raw=true"></p>
 
 Tuya client that allows you to locally communicate with tuya devices __without__ the tuya-cloud.
 
