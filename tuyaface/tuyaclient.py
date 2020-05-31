@@ -158,7 +158,7 @@ class TuyaClient(threading.Thread):
                                         and reply["data"]
                                     ):
                                         json_reply = json.loads(reply["data"])
-                                        self.on_status(json_reply)
+                                        self.on_status(json_reply, "status")
                             else:
                                 # This may happen if the Tuya device has reached its maximum number of clients,
                                 # sleep to prevent a cycle of repeatedly reconnecting
@@ -218,6 +218,7 @@ class TuyaClient(threading.Thread):
                 status_reply = {"data": "{}"}
             data = json.loads(status_reply["data"])
             self.device["tuyaface"]["status"] = data
+            self.device["tuyaface"]["status_reply_on"] = "status"
             return data
         except socket.error:
             logger.debug(
@@ -251,7 +252,7 @@ class TuyaClient(threading.Thread):
                     self._pong()
                 if self.on_status and reply["cmd"] == tf.STATUS and reply["data"]:
                     json_reply = json.loads(reply["data"])
-                    self.on_status(json_reply)
+                    self.on_status(json_reply, "command")
             if not reply or ("rc" in reply and reply["rc"] != 0):
                 return False
             return True

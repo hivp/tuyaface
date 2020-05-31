@@ -19,7 +19,7 @@ Returns dict
 
 __Update device dps state__
 ```
-set_state(device: dict, value: bool, idx: int = 1)
+set_state(device: dict, value, idx: int = 1)
 Returns dict
 ```
 
@@ -46,7 +46,7 @@ Returns dict
 
 __Update device dps state__
 ```
-set_state(value: bool, idx: int = 1)
+set_state(value, idx: int = 1)
 Returns dict
 ```
 
@@ -60,7 +60,7 @@ _example_
 ```
 from tuyaface.tuyaclient import TuyaClient
 
-def on_status(data:dict):
+def on_status(data: dict):
     print(data)
 
 def on_connection(value: bool):
@@ -130,7 +130,7 @@ Implementations
 
 Acknowledgements
 =================
-- This module is a rewrite of https://github.com/clach04/python-tuya
+- https://github.com/clach04/python-tuya formed the base for this lib
 - https://github.com/codetheweb/tuyapi as reference on commands 
 - https://github.com/SDNick484 for testing protocol 3.1 reimplementation
 - https://github.com/jkerdreux-imt several improvements
