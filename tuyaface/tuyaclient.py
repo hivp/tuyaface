@@ -237,7 +237,7 @@ class TuyaClient(threading.Thread):
         except queue.Empty:
             logger.warning("(%s) No reply to status", self.device["ip"])
 
-    def _set_state(self, value: bool, idx: int = 1):
+    def _set_state(self, value, idx: int = 1):
 
         if self.device["tuyaface"]["connection"] is None:
             try:
@@ -261,8 +261,11 @@ class TuyaClient(threading.Thread):
             )
             self.force_reconnect = True
 
-    def set_state(self, value: bool, idx: int = 1):
+    def set_state(self, value, idx: int = 1):
         """Set state."""
+        if not isinstance(value, (bool, float, int, str)):
+            raise ValueError(f"Type {type(value)} not acceptable")
+
         reply_queue = queue.Queue(1)
         self.command_queue.put((self._set_state, (value, idx), reply_queue))
         self._interrupt()

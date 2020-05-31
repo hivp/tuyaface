@@ -344,14 +344,15 @@ def set_status(device: dict, dps: dict):
     return True
 
 
-def set_state(device: dict, value: bool, idx: int = 1):
+def set_state(device: dict, value, idx: int = 1):
     """
     Send status update request for one dps value to the tuya device.
 
     returns bool
     """
+    if not isinstance(value, (bool, float, int, str)):
+        raise ValueError(f"Type {type(value)} not acceptable")
 
-    # turn a device on/off
     return set_status(device, {idx: value})
 
 
