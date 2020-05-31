@@ -233,7 +233,7 @@ def _set_properties(device: dict):
             "sequence_nr": 0,
             "connection": None,
             "availability": False,
-            "pref_status_cmd": tf.DP_QUERY,
+            "pref_status_cmd": device.get("pref_status_cmd", tf.DP_QUERY),
             "status": None,
         },
     )
