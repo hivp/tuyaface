@@ -54,6 +54,9 @@ class TuyaClient(threading.Thread):
             logger.debug("(%s) PING", self.device["ip"])
             _send_request(self.device, tf.HEART_BEAT)
         except socket.error:
+            logger.debug(
+                "(%s) exception when sending heartbeat", self.device["ip"],
+            )
             self.force_reconnect = True
 
     def _pong(self):
@@ -177,6 +180,9 @@ class TuyaClient(threading.Thread):
                         self.socketpair[0].recv(128)
 
                     if self._is_connection_stale():
+                        logger.debug(
+                            "(%s) connection stale", self.device["ip"],
+                        )
                         self.force_reconnect = True
 
                 while not self.command_queue.empty():
@@ -214,6 +220,9 @@ class TuyaClient(threading.Thread):
             self.device["tuyaface"]["status"] = data
             return data
         except socket.error:
+            logger.debug(
+                "(%s) exception when updating status", self.device["ip"],
+            )
             self.force_reconnect = True
 
     def status(self):
@@ -247,6 +256,9 @@ class TuyaClient(threading.Thread):
                 return False
             return True
         except socket.error:
+            logger.debug(
+                "(%s) exception when setting state", self.device["ip"],
+            )
             self.force_reconnect = True
 
     def set_state(self, value: bool, idx: int = 1):
