@@ -1,4 +1,4 @@
-<p align="center"><img widht="50%" alt="TuyaFace logo" src="https://github.com/TradeFace/tuyamqtt/blob/development/docs/tuyaface_logo.png?raw=true"></p>
+<p align="center"><img width="50%" alt="TuyaFace logo" src="https://github.com/TradeFace/tuyamqtt/blob/development/docs/tuyaface_logo.png?raw=true"></p>
 
 Tuya client that allows you to locally communicate with tuya devices __without__ the tuya-cloud.
 
@@ -105,23 +105,6 @@ dps = {
 }
 ```
 
-
-Todo *v1.3.0*
-==================
-- validate/sanitize request
-- throttle reconnect requests #48
-- Pre-commit triggers (black, mypy, flake, etc) #54
-
-Changelog
-==================
-*v1.2.0*
-- WIP #44 sequence_nr
-- WIP #44 connection
-- Store preferred status command in device dict #43
-- Nest tuyaface values in device: dict #44
-- Improve message parsing #47
-
-Earlier changes https://github.com/TradeFace/tuya/wiki
 
 Implementations
 ================
