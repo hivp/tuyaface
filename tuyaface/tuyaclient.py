@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 HEART_BEAT_PING_TIME = 5
 HEART_BEAT_PONG_TIME = 5
+RECONNECT_COOL_DOWN_TIME = 5
 
 
 class TuyaClient(threading.Thread):
@@ -39,6 +40,7 @@ class TuyaClient(threading.Thread):
         self.force_reconnect = False
         self.last_ping = 0
         self.last_pong = time.time()
+        self.last_reconnect = 0
         self.on_connection = on_connection
         self.on_status = on_status
         self.command_queue = queue.Queue()
@@ -98,10 +100,19 @@ class TuyaClient(threading.Thread):
         # TODO: nested too deep, split up in functions
         while not self.stop.is_set():  # pylint: disable=too-many-nested-blocks
             try:
-                force_sleep = False
                 if self.force_reconnect:
                     self.force_reconnect = False
                     logger.warning("(%s) reconnecting", self.device["ip"])
+                    now = time.time()
+                    if now - self.last_reconnect < RECONNECT_COOL_DOWN_TIME:
+                        logger.debug(
+                            "(%s) waiting before reconnecting", self.device["ip"]
+                        )
+                        # Sleep to prevent a cycle of repeatedly reconnecting
+                        time.sleep(
+                            RECONNECT_COOL_DOWN_TIME - (now - self.last_reconnect)
+                        )
+                    self.last_reconnect = time.time()
                     if self.device["tuyaface"]["connection"]:
                         try:
                             self.device["tuyaface"]["connection"].close()
@@ -160,9 +171,7 @@ class TuyaClient(threading.Thread):
                                         json_reply = json.loads(reply["data"])
                                         self.on_status(json_reply, "status")
                             else:
-                                # This may happen if the Tuya device has reached its maximum number of clients,
-                                # sleep to prevent a cycle of repeatedly reconnecting
-                                force_sleep = True
+                                self.force_reconnect = True
                         except socket.error:
                             logger.exception(
                                 "(%s) exception when reading from socket",
@@ -170,9 +179,6 @@ class TuyaClient(threading.Thread):
                                 exc_info=False,
                             )
                             self.force_reconnect = True
-                            # This may happen if the Tuya device has reached its maximum number of clients,
-                            # sleep to prevent a cycle of repeatedly reconnecting
-                            force_sleep = True
 
                     if self.socketpair[0] in can_read:
                         # Clear the socket's buffer
@@ -190,7 +196,7 @@ class TuyaClient(threading.Thread):
                     result = command(*args)
                     reply_queue.put(result)
 
-                if not self.device["tuyaface"]["connection"] or force_sleep:
+                if not self.device["tuyaface"]["connection"]:
                     time.sleep(HEART_BEAT_PING_TIME / 2)
             except Exception:  # pylint: disable=broad-except
                 logger.exception("(%s) Unexpected exception", self.device["ip"])
