@@ -21,8 +21,8 @@ from . import (
 logger = logging.getLogger(__name__)
 
 
-HEART_BEAT_PING_TIME = 5
-HEART_BEAT_PONG_TIME = 5
+HEART_BEAT_TIME = 5
+CONNECTION_STALE_TIME = 5
 RECONNECT_COOL_DOWN_TIME = 5
 
 
@@ -38,8 +38,7 @@ class TuyaClient(threading.Thread):
         _set_properties(device)
         self.device = device
         self.force_reconnect = False
-        self.last_ping = 0
-        self.last_pong = time.time()
+        self.last_msg_rcv = time.time()
         self.last_reconnect = 0
         self.on_connection = on_connection
         self.on_status = on_status
@@ -51,7 +50,6 @@ class TuyaClient(threading.Thread):
     def _ping(self):
         """Send a ping message."""
 
-        self.last_ping = time.time()
         try:
             logger.debug("(%s) PING", self.device["ip"])
             _send_request(self.device, tf.HEART_BEAT)
@@ -65,17 +63,16 @@ class TuyaClient(threading.Thread):
         """Reset expired counter."""
 
         logger.debug("(%s) PONG", self.device["ip"])
-        self.last_pong = time.time()
 
     def _is_connection_stale(self):
         """Indicate if connection has expired."""
 
-        if time.time() - self.last_ping > HEART_BEAT_PING_TIME:
+        if time.time() - self.last_msg_rcv > HEART_BEAT_TIME:
             self._ping()
 
         return (
-            time.time() - self.last_pong
-        ) > HEART_BEAT_PING_TIME + HEART_BEAT_PONG_TIME
+            time.time() - self.last_msg_rcv
+        ) > HEART_BEAT_TIME + CONNECTION_STALE_TIME
 
     def _connect(self):
 
@@ -84,7 +81,7 @@ class TuyaClient(threading.Thread):
 
         if self.on_connection:
             self.on_connection(True)
-        self.last_pong = time.time()
+        self.last_msg_rcv = time.time()
 
     def _interrupt(self):
 
@@ -146,7 +143,7 @@ class TuyaClient(threading.Thread):
                     can_read = []
                     try:
                         can_read, _, _ = select.select(
-                            rlist, [], [], HEART_BEAT_PING_TIME / 2
+                            rlist, [], [], CONNECTION_STALE_TIME / 2
                         )
                     except ValueError:
                         logger.exception(
@@ -161,6 +158,7 @@ class TuyaClient(threading.Thread):
                             # logger.debug("(%s) read from socket '%s' (%s)", self.device["ip"], ''.join(format(x, '02x') for x in data), len(data))
                             if data:
                                 for reply in _process_raw_reply(self.device, data):
+                                    self.last_msg_rcv = time.time()
                                     if reply["cmd"] == tf.HEART_BEAT:
                                         self._pong()
                                     if (
@@ -197,7 +195,7 @@ class TuyaClient(threading.Thread):
                     reply_queue.put(result)
 
                 if not self.device["tuyaface"]["connection"]:
-                    time.sleep(HEART_BEAT_PING_TIME / 2)
+                    time.sleep(RECONNECT_COOL_DOWN_TIME / 2)
             except Exception:  # pylint: disable=broad-except
                 logger.exception("(%s) Unexpected exception", self.device["ip"])
 
@@ -217,6 +215,8 @@ class TuyaClient(threading.Thread):
                 return
         try:
             status_reply, all_replies = _status(self.device)
+            if all_replies:
+                self.last_msg_rcv = time.time()
             heartbeat = _select_command_reply(self.device, all_replies, tf.HEART_BEAT)
             if heartbeat:
                 self._pong()
@@ -252,14 +252,16 @@ class TuyaClient(threading.Thread):
             except socket.error:
                 return
         try:
-            reply, all_replies = _set_status(self.device, {idx: value})
+            state_reply, all_replies = _set_status(self.device, {idx: value})
+            if all_replies:
+                self.last_msg_rcv = time.time()
             for reply in all_replies:
                 if reply["cmd"] == tf.HEART_BEAT:
                     self._pong()
                 if self.on_status and reply["cmd"] == tf.STATUS and reply["data"]:
                     json_reply = json.loads(reply["data"])
                     self.on_status(json_reply, "command")
-            if not reply or ("rc" in reply and reply["rc"] != 0):
+            if not state_reply or ("rc" in state_reply and state_reply["rc"] != 0):
                 return False
             return True
         except socket.error:
