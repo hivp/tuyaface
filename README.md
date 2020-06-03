@@ -243,6 +243,7 @@ Close the connection and stop the worker thread.
 
 
 _example_
+--------
 ```
 from tuyaface.tuyaclient import TuyaClient
 
@@ -277,9 +278,21 @@ device = {
     'protocol': '3.3', # 3.1 | 3.3
     'deviceid': '34280100600194d17c96',
     'localkey': 'e7e9339aa82abe61',
-    'ip': '192.168.1.101',            
+    'ip': '192.168.1.101',
+    'pref_status_cmd': 10 #optional, default 10
 }
 ```
+TuyaFace will automatically add `tuyaface` dict to the device with data to support implementations without the TuyaClient class. 
+```
+tuyaface = {
+    "sequence_nr": 0, # Request counter
+    "connection": None, # Holds the connection 
+    "availability": False, # If the device could be reached
+    "pref_status_cmd": 10, # Preferred status command 
+    "status": None, # Reply to the last status request
+}
+```
+
 __DPS dict__
 ```
 dps = {
@@ -291,17 +304,20 @@ dps = {
 }
 ```
 
+Improvements
+==============
+Do you have ideas how we can make this package even better? Or would you like to contribute in another way? Drop a line in the issue section, all help is welcome.
+
+Acknowledgements
+=================
+- https://github.com/emontnemery tuyaclient and much more
+- https://github.com/jkerdreux-imt several improvements
+- https://github.com/SDNick484 for testing protocol 3.1 reimplementation
+- https://github.com/PortableProgrammer help on #20
+- https://github.com/clach04/python-tuya formed the base for this lib
+- https://github.com/codetheweb/tuyapi as reference on commands 
 
 Implementations
 ================
 - https://github.com/TradeFace/tuyamqtt
 - _let me know, I'll add it here_
-
-Acknowledgements
-=================
-- https://github.com/clach04/python-tuya formed the base for this lib
-- https://github.com/codetheweb/tuyapi as reference on commands 
-- https://github.com/SDNick484 for testing protocol 3.1 reimplementation
-- https://github.com/jkerdreux-imt several improvements
-- https://github.com/PortableProgrammer help on #20
-- https://github.com/emontnemery tuyaclient 
