@@ -8,7 +8,7 @@ from hashlib import md5
 import logging
 
 from . import aescipher
-from . import const as tf
+from .const import CMD_TYPE
 from .helper import hex2bytes
 
 logger = logging.getLogger(__name__)
@@ -22,12 +22,12 @@ def _generate_json_data(device_id: str, command: int, data: dict):
     """
 
     payload_dict = {
-        tf.CONTROL: {"devId": "", "uid": "", "t": ""},
-        tf.STATUS: {"gwId": "", "devId": ""},
-        tf.HEART_BEAT: {},
-        tf.DP_QUERY: {"gwId": "", "devId": "", "uid": "", "t": ""},
-        tf.CONTROL_NEW: {"devId": "", "uid": "", "t": ""},
-        tf.DP_QUERY_NEW: {"devId": "", "uid": "", "t": ""},
+        CMD_TYPE.CONTROL: {"devId": "", "uid": "", "t": ""},
+        CMD_TYPE.STATUS: {"gwId": "", "devId": ""},
+        CMD_TYPE.HEART_BEAT: {},
+        CMD_TYPE.DP_QUERY: {"gwId": "", "devId": "", "uid": "", "t": ""},
+        CMD_TYPE.CONTROL_NEW: {"devId": "", "uid": "", "t": ""},
+        CMD_TYPE.DP_QUERY_NEW: {"devId": "", "uid": "", "t": ""},
     }
 
     json_data = payload_dict.get(command, {})
@@ -41,7 +41,7 @@ def _generate_json_data(device_id: str, command: int, data: dict):
     if "t" in json_data:
         json_data["t"] = str(int(time.time()))
 
-    if command == tf.CONTROL_NEW:
+    if command == CMD_TYPE.CONTROL_NEW:
         json_data["dps"] = {"1": None, "2": None, "3": None}
     if data is not None:
         json_data["dps"] = data
@@ -76,7 +76,7 @@ def _generate_payload(
 
     if device["protocol"] == "3.1":
 
-        if command == tf.CONTROL:
+        if command == CMD_TYPE.CONTROL:
             payload_crypt = aescipher.encrypt(device["localkey"], payload_json)
             premd5string = (
                 b"data=" + payload_crypt + b"||lpv=" + b"3.1||" + device["localkey"]
@@ -90,7 +90,7 @@ def _generate_payload(
 
     elif device["protocol"] == "3.3":
 
-        if command != tf.DP_QUERY:
+        if command != CMD_TYPE.DP_QUERY:
             # add the 3.3 header
             header_payload_hb = b"3.3" + b"\0\0\0\0\0\0\0\0\0\0\0\0"
 
@@ -164,7 +164,7 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
         elif device["protocol"] == "3.3":
             if size > 12:
                 data = sbytes[20 : 8 + size]
-                if cmd == tf.STATUS:
+                if cmd == CMD_TYPE.STATUS:
                     data = data[15:]
                 payload = aescipher.decrypt(device["localkey"], data, False)
 
@@ -176,7 +176,7 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
             device["ip"],
             msg["seq"],
             msg["cmd"],
-            tf.CMD_TO_STRING.get(msg["cmd"], "UNKNOWN"),
+            CMD_TYPE(msg["cmd"]).name,
             return_code if has_return_code else "-",
             msg.get("data", ""),
         )
@@ -191,7 +191,7 @@ def _select_status_reply(replies: list):
     """
 
     filtered_replies = list(
-        filter(lambda x: x["data"] and x["cmd"] == tf.STATUS, replies)
+        filter(lambda x: x["data"] and x["cmd"] == CMD_TYPE.STATUS, replies)
     )
     if len(filtered_replies) == 0:
         return None
@@ -219,7 +219,7 @@ def _select_command_reply(device: dict, replies: list, command: int, seq: int = 
             "Got multiple replies %s for request [%x:%s]",
             filtered_replies,
             command,
-            tf.CMD_TO_STRING.get(command, "UNKNOWN"),
+            CMD_TYPE(command).name,
         )
     return filtered_replies[0]
 
@@ -233,7 +233,7 @@ def _set_properties(device: dict):
             "sequence_nr": 0,
             "connection": None,
             "availability": False,
-            "pref_status_cmd": device.get("pref_status_cmd", tf.DP_QUERY),
+            "pref_status_cmd": device.get("pref_status_cmd", CMD_TYPE.DP_QUERY),
             "status": None,
         },
     )
@@ -261,16 +261,16 @@ def _status(device: dict, expect_reply: int = 1, recurse_cnt: int = 0):
     # If status is triggered by DP_QUERY, the status is in a DP_QUERY message
     # If status is triggered by CONTROL_NEW, the status is a STATUS message
     while new_replies and (
-        not request_reply or (cmd == tf.CONTROL_NEW and not status_reply)
+        not request_reply or (cmd == CMD_TYPE.CONTROL_NEW and not status_reply)
     ):
         new_replies = list(reply for reply in _receive_replies(device, 1))
         replies = replies + new_replies
         request_reply = _select_command_reply(device, replies, cmd, request_cnt)
         status_reply = _select_status_reply(replies)
 
-    # If there is valid reply to tf.DP_QUERY, use it as status reply
+    # If there is valid reply to CMD_TYPE.DP_QUERY, use it as status reply
     if (
-        cmd == tf.DP_QUERY
+        cmd == CMD_TYPE.DP_QUERY
         and request_reply
         and request_reply["data"]
         and request_reply["data"] != "json obj data unvalid"
@@ -280,7 +280,7 @@ def _status(device: dict, expect_reply: int = 1, recurse_cnt: int = 0):
     if not status_reply and recurse_cnt < 3 and device["tuyaface"]["availability"]:
         if request_reply and request_reply["data"] == "json obj data unvalid":
             # some devices (ie LSC Bulbs) only offer partial status with CONTROL_NEW instead of DP_QUERY
-            device["tuyaface"]["pref_status_cmd"] = tf.CONTROL_NEW
+            device["tuyaface"]["pref_status_cmd"] = CMD_TYPE.CONTROL_NEW
         status_reply, new_replies = _status(device, 2, recurse_cnt + 1)
         replies = replies + new_replies
 
@@ -313,7 +313,7 @@ def _set_status(device: dict, dps: dict):
 
     # TODO: validate/sanitize request
     tmp = {str(k): v for k, v in dps.items()}
-    request_cnt = _send_request(device, tf.CONTROL, tmp)
+    request_cnt = _send_request(device, CMD_TYPE.CONTROL, tmp)
 
     replies = []
     new_replies = [None]
@@ -324,7 +324,9 @@ def _set_status(device: dict, dps: dict):
     while new_replies and not request_reply:
         new_replies = list(reply for reply in _receive_replies(device, 1))
         replies = replies + new_replies
-        request_reply = _select_command_reply(device, replies, tf.CONTROL, request_cnt)
+        request_reply = _select_command_reply(
+            device, replies, CMD_TYPE.CONTROL, request_cnt
+        )
 
     return (request_reply, replies)
 
@@ -404,7 +406,7 @@ def _receive_replies(device: dict, max_receive_cnt):
     yield from _receive_replies(device, max_receive_cnt - 1)
 
 
-def _send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None):
+def _send_request(device: dict, command: int = CMD_TYPE.DP_QUERY, payload: dict = None):
     """
     Connect to the tuya device and send a request.
 
@@ -426,7 +428,7 @@ def _send_request(device: dict, command: int = tf.DP_QUERY, payload: dict = None
         device["ip"],
         request_cnt,
         command,
-        tf.CMD_TO_STRING.get(command, "UNKNOWN"),
+        CMD_TYPE(command).name,
         payload,
     )
     # logger.debug("(%s) write to socket: '%s'", device["ip"], ''.join(format(x, '02x') for x in request))
