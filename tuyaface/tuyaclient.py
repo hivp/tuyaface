@@ -15,8 +15,8 @@ from . import (
     _set_properties,
     _set_status,
     _status,
-    tf,
 )
+from .const import CMD_TYPE
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +52,7 @@ class TuyaClient(threading.Thread):
 
         try:
             logger.debug("(%s) PING", self.device["ip"])
-            _send_request(self.device, tf.HEART_BEAT)
+            _send_request(self.device, CMD_TYPE.HEART_BEAT)
         except socket.error:
             logger.debug(
                 "(%s) exception when sending heartbeat", self.device["ip"],
@@ -159,11 +159,11 @@ class TuyaClient(threading.Thread):
                             if data:
                                 for reply in _process_raw_reply(self.device, data):
                                     self.last_msg_rcv = time.time()
-                                    if reply["cmd"] == tf.HEART_BEAT:
+                                    if reply["cmd"] == CMD_TYPE.HEART_BEAT:
                                         self._pong()
                                     if (
                                         self.on_status
-                                        and reply["cmd"] == tf.STATUS
+                                        and reply["cmd"] == CMD_TYPE.STATUS
                                         and reply["data"]
                                     ):
                                         json_reply = json.loads(reply["data"])
@@ -217,7 +217,9 @@ class TuyaClient(threading.Thread):
             status_reply, all_replies = _status(self.device)
             if all_replies:
                 self.last_msg_rcv = time.time()
-            heartbeat = _select_command_reply(self.device, all_replies, tf.HEART_BEAT)
+            heartbeat = _select_command_reply(
+                self.device, all_replies, CMD_TYPE.HEART_BEAT
+            )
             if heartbeat:
                 self._pong()
             if not status_reply:
@@ -256,9 +258,9 @@ class TuyaClient(threading.Thread):
             if all_replies:
                 self.last_msg_rcv = time.time()
             for reply in all_replies:
-                if reply["cmd"] == tf.HEART_BEAT:
+                if reply["cmd"] == CMD_TYPE.HEART_BEAT:
                     self._pong()
-                if self.on_status and reply["cmd"] == tf.STATUS and reply["data"]:
+                if self.on_status and reply["cmd"] == CMD_TYPE.STATUS and reply["data"]:
                     json_reply = json.loads(reply["data"])
                     self.on_status(json_reply, "command")
             if not state_reply or ("rc" in state_reply and state_reply["rc"] != 0):
