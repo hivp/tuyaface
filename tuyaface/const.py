@@ -2,7 +2,7 @@
 from enum import IntEnum, unique
 
 
-@unique  # pylint: disable=invalid-name
+@unique
 class CMD_TYPE(IntEnum):
     """Tuya message types."""
 
