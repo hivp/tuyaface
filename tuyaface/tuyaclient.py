@@ -21,8 +21,8 @@ from .const import CMD_TYPE
 logger = logging.getLogger(__name__)
 
 
-HEART_BEAT_TIME = 5
-CONNECTION_STALE_TIME = 5
+HEART_BEAT_TIME = 7
+CONNECTION_STALE_TIME = 7
 RECONNECT_COOL_DOWN_TIME = 5
 
 
