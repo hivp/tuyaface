@@ -246,7 +246,7 @@ class TuyaClient(threading.Thread):
         except queue.Empty:
             logger.warning("(%s) No reply to status", self.device["ip"])
 
-    def _set_state(self, value, idx: int = 1):
+    def _set_state(self, value: dict, idx: int = 1):
 
         if self.device["tuyaface"]["connection"] is None:
             try:
@@ -254,7 +254,7 @@ class TuyaClient(threading.Thread):
             except socket.error:
                 return
         try:
-            state_reply, all_replies = _set_status(self.device, {idx: value})
+            state_reply, all_replies = _set_status(self.device, value)
             if all_replies:
                 self.last_msg_rcv = time.time()
             for reply in all_replies:
@@ -278,7 +278,7 @@ class TuyaClient(threading.Thread):
             raise ValueError(f"Type {type(value)} not acceptable")
 
         reply_queue = queue.Queue(1)
-        self.command_queue.put((self._set_state, (value, idx), reply_queue))
+        self.command_queue.put((self._set_state, ({idx: value}, idx), reply_queue))
         self._interrupt()
         reply = None
         try:
@@ -286,3 +286,18 @@ class TuyaClient(threading.Thread):
             return reply
         except queue.Empty:
             logger.warning("(%s) No reply to set_state", self.device["ip"])
+
+    def set_status(self, value: dict):
+        """Set status."""
+        if not isinstance(value, dict):
+            raise ValueError(f"Type {type(value)} not acceptable")
+
+        reply_queue = queue.Queue(1)
+        self.command_queue.put((self._set_state, (value,), reply_queue))
+        self._interrupt()
+        reply = None
+        try:
+            reply = reply_queue.get(timeout=2)
+            return reply
+        except queue.Empty:
+            logger.warning("(%s) No reply to set_status", self.device["ip"])

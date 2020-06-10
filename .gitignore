@@ -3,3 +3,4 @@ build/
 dist/
 tuyaface/__pycache__
 tuyaface.egg-info/
+.vscode
