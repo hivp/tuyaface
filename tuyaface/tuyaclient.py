@@ -234,7 +234,7 @@ class TuyaClient(threading.Thread):
             )
             self.force_reconnect = True
 
-    def status(self):
+    def status(self) -> dict:
         """Request status."""
         reply_queue = queue.Queue(1)
         self.command_queue.put((self._status, (None,), reply_queue))
@@ -272,7 +272,7 @@ class TuyaClient(threading.Thread):
             )
             self.force_reconnect = True
 
-    def set_state(self, value, idx: int = 1):
+    def set_state(self, value, idx: int = 1) -> dict:
         """Set state."""
         if not isinstance(value, (bool, float, int, str)):
             raise ValueError(f"Type {type(value)} not acceptable")
@@ -287,7 +287,7 @@ class TuyaClient(threading.Thread):
         except queue.Empty:
             logger.warning("(%s) No reply to set_state", self.device["ip"])
 
-    def set_status(self, value: dict):
+    def set_status(self, value: dict) -> dict:
         """Set status."""
         if not isinstance(value, dict):
             raise ValueError(f"Type {type(value)} not acceptable")

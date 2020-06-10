@@ -14,7 +14,7 @@ from .helper import hex2bytes
 logger = logging.getLogger(__name__)
 
 
-def _generate_json_data(device_id: str, command: int, data: dict):
+def _generate_json_data(device_id: str, command: int, data: dict) -> str:
     """
     Fill the data structure for the command with the given values.
 
@@ -120,7 +120,7 @@ def _stitch_payload(payload_hb: bytes, request_cnt: int, command: int):
     return buffer_hb[:-8] + hex2bytes(hex_crc) + buffer_hb[-4:]
 
 
-def _process_raw_reply(device: dict, raw_reply: bytes):
+def _process_raw_reply(device: dict, raw_reply: bytes) -> str:
     """
     Split the raw reply(s) into chuncks and decrypts it.
 
@@ -183,7 +183,7 @@ def _process_raw_reply(device: dict, raw_reply: bytes):
         yield msg
 
 
-def _select_status_reply(replies: list):
+def _select_status_reply(replies: list) -> dict:
     """
     Find the first valid status reply.
 
@@ -198,7 +198,9 @@ def _select_status_reply(replies: list):
     return filtered_replies[0]
 
 
-def _select_command_reply(device: dict, replies: list, command: int, seq: int = None):
+def _select_command_reply(
+    device: dict, replies: list, command: int, seq: int = None
+) -> dict:
     """
     Find a valid command reply.
 
@@ -239,7 +241,7 @@ def _set_properties(device: dict):
     )
 
 
-def _status(device: dict, expect_reply: int = 1, recurse_cnt: int = 0):
+def _status(device: dict, expect_reply: int = 1, recurse_cnt: int = 0) -> tuple:
     """
     Send current status request to the tuya device and waits for status update.
 
@@ -287,7 +289,7 @@ def _status(device: dict, expect_reply: int = 1, recurse_cnt: int = 0):
     return (status_reply, replies)
 
 
-def status(device: dict):
+def status(device: dict) -> dict:
     """
     Request status of the tuya device.
 
@@ -303,7 +305,7 @@ def status(device: dict):
     return json.loads(reply["data"])
 
 
-def _set_status(device: dict, dps: dict):
+def _set_status(device: dict, dps: dict) -> tuple:
     """
     Send state update request to the tuya device and waits response.
 
@@ -331,7 +333,7 @@ def _set_status(device: dict, dps: dict):
     return (request_reply, replies)
 
 
-def set_status(device: dict, dps: dict):
+def set_status(device: dict, dps: dict) -> bool:
     """
     Send state update request to the tuya device and waits for response.
 
@@ -346,7 +348,7 @@ def set_status(device: dict, dps: dict):
     return True
 
 
-def set_state(device: dict, value, idx: int = 1):
+def set_state(device: dict, value, idx: int = 1) -> bool:
     """
     Send status update request for one dps value to the tuya device.
 
