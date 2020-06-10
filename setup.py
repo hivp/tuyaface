@@ -7,7 +7,7 @@ try:
 except ImportError:
     from distutils.core import setup
 
-version_tuple = (1, 3, 1)
+version_tuple = (1, 4, 0)
 version = version_string = __version__ = "%d.%d.%d" % version_tuple
 __author__ = "tradeface"
 
@@ -34,18 +34,25 @@ if os.path.exists(readme_filename):
 else:
     long_description = None
 
+
+def parse_requirements(filename):
+    """Load requirements from a pip requirements file."""
+    lineiter = (line.strip() for line in open(filename))
+    return [line for line in lineiter if line and not line.startswith("#")]
+
+
 setup(
     name="tuyaface",
     author=__author__,
     version=__version__,
-    description="Python interface to Tuya WiFi smart devices.",
+    description="Python library for local communication with Tuya devices.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/TradeFace/tuya/",
+    url="https://github.com/TradeFace/tuyaface/",
     author_email="",
     license="Unlicense",
     classifiers=[
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
         "Topic :: Home Automation",
         "License :: Public Domain",
@@ -53,10 +60,9 @@ setup(
         "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.6",
-        "Topic :: Home Automation",
     ],
-    keywords="home automation, tuya",
+    keywords="home automation, tuya, api",
     packages=["tuyaface"],
     platforms="any",
-    install_requires=["pycryptodomex", "bitstring",],
+    install_requires=parse_requirements("requirements.txt"),
 )

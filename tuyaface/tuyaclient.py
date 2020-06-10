@@ -15,14 +15,14 @@ from . import (
     _set_properties,
     _set_status,
     _status,
-    tf,
 )
+from .const import CMD_TYPE
 
 logger = logging.getLogger(__name__)
 
 
-HEART_BEAT_TIME = 5
-CONNECTION_STALE_TIME = 5
+HEART_BEAT_TIME = 7
+CONNECTION_STALE_TIME = 7
 RECONNECT_COOL_DOWN_TIME = 5
 
 
@@ -52,7 +52,7 @@ class TuyaClient(threading.Thread):
 
         try:
             logger.debug("(%s) PING", self.device["ip"])
-            _send_request(self.device, tf.HEART_BEAT)
+            _send_request(self.device, CMD_TYPE.HEART_BEAT)
         except socket.error:
             logger.debug(
                 "(%s) exception when sending heartbeat", self.device["ip"],
@@ -159,11 +159,11 @@ class TuyaClient(threading.Thread):
                             if data:
                                 for reply in _process_raw_reply(self.device, data):
                                     self.last_msg_rcv = time.time()
-                                    if reply["cmd"] == tf.HEART_BEAT:
+                                    if reply["cmd"] == CMD_TYPE.HEART_BEAT:
                                         self._pong()
                                     if (
                                         self.on_status
-                                        and reply["cmd"] == tf.STATUS
+                                        and reply["cmd"] == CMD_TYPE.STATUS
                                         and reply["data"]
                                     ):
                                         json_reply = json.loads(reply["data"])
@@ -217,7 +217,9 @@ class TuyaClient(threading.Thread):
             status_reply, all_replies = _status(self.device)
             if all_replies:
                 self.last_msg_rcv = time.time()
-            heartbeat = _select_command_reply(self.device, all_replies, tf.HEART_BEAT)
+            heartbeat = _select_command_reply(
+                self.device, all_replies, CMD_TYPE.HEART_BEAT
+            )
             if heartbeat:
                 self._pong()
             if not status_reply:
@@ -232,7 +234,7 @@ class TuyaClient(threading.Thread):
             )
             self.force_reconnect = True
 
-    def status(self):
+    def status(self) -> dict:
         """Request status."""
         reply_queue = queue.Queue(1)
         self.command_queue.put((self._status, (None,), reply_queue))
@@ -244,7 +246,7 @@ class TuyaClient(threading.Thread):
         except queue.Empty:
             logger.warning("(%s) No reply to status", self.device["ip"])
 
-    def _set_state(self, value, idx: int = 1):
+    def _set_state(self, value: dict, idx: int = 1):
 
         if self.device["tuyaface"]["connection"] is None:
             try:
@@ -252,13 +254,13 @@ class TuyaClient(threading.Thread):
             except socket.error:
                 return
         try:
-            state_reply, all_replies = _set_status(self.device, {idx: value})
+            state_reply, all_replies = _set_status(self.device, value)
             if all_replies:
                 self.last_msg_rcv = time.time()
             for reply in all_replies:
-                if reply["cmd"] == tf.HEART_BEAT:
+                if reply["cmd"] == CMD_TYPE.HEART_BEAT:
                     self._pong()
-                if self.on_status and reply["cmd"] == tf.STATUS and reply["data"]:
+                if self.on_status and reply["cmd"] == CMD_TYPE.STATUS and reply["data"]:
                     json_reply = json.loads(reply["data"])
                     self.on_status(json_reply, "command")
             if not state_reply or ("rc" in state_reply and state_reply["rc"] != 0):
@@ -270,13 +272,13 @@ class TuyaClient(threading.Thread):
             )
             self.force_reconnect = True
 
-    def set_state(self, value, idx: int = 1):
+    def set_state(self, value, idx: int = 1) -> dict:
         """Set state."""
         if not isinstance(value, (bool, float, int, str)):
             raise ValueError(f"Type {type(value)} not acceptable")
 
         reply_queue = queue.Queue(1)
-        self.command_queue.put((self._set_state, (value, idx), reply_queue))
+        self.command_queue.put((self._set_state, ({idx: value}, idx), reply_queue))
         self._interrupt()
         reply = None
         try:
@@ -284,3 +286,18 @@ class TuyaClient(threading.Thread):
             return reply
         except queue.Empty:
             logger.warning("(%s) No reply to set_state", self.device["ip"])
+
+    def set_status(self, value: dict) -> dict:
+        """Set status."""
+        if not isinstance(value, dict):
+            raise ValueError(f"Type {type(value)} not acceptable")
+
+        reply_queue = queue.Queue(1)
+        self.command_queue.put((self._set_state, (value,), reply_queue))
+        self._interrupt()
+        reply = None
+        try:
+            reply = reply_queue.get(timeout=2)
+            return reply
+        except queue.Empty:
+            logger.warning("(%s) No reply to set_status", self.device["ip"])
