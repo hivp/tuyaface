@@ -1,4 +1,4 @@
-<p align="center"><img width="50%" alt="TuyaFace logo" src="https://github.com/TradeFace/tuyamqtt/blob/development/docs/tuyaface_logo.png?raw=true"></p>
+<p align="center"><img width="50%" alt="TuyaFace logo" src="https://raw.githubusercontent.com/wiki/TradeFace/tuyagateway/img/tuyaface_logo.png"></p>
 
 Tuya client that allows you to locally communicate with tuya devices __without__ the tuya-cloud.
 
@@ -312,12 +312,12 @@ Acknowledgements
 =================
 - https://github.com/emontnemery tuyaclient and much more
 - https://github.com/jkerdreux-imt several improvements
-- https://github.com/SDNick484 for testing protocol 3.1 reimplementation
+- https://github.com/SDNick484 testing protocol 3.1 reimplementation
 - https://github.com/PortableProgrammer help on #20
-- https://github.com/clach04/python-tuya formed the base for this lib
-- https://github.com/codetheweb/tuyapi as reference on commands 
+- https://github.com/clach04/python-tuya the base for this lib
+- https://github.com/codetheweb/tuyapi reference on commands 
 
 Implementations
 ================
-- https://github.com/TradeFace/tuyamqtt
+- https://github.com/TradeFace/tuyagateway
 - _let me know, I'll add it here_

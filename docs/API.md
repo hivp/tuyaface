@@ -1,19 +1,4 @@
----
-description: |
-    API documentation for modules: tuyaface, tuyaface.aescipher, tuyaface.const, tuyaface.helper, tuyaface.tuyaclient.
-
-lang: en
-
-classoption: oneside
-geometry: margin=1in
-papersize: a4
-
-linkcolor: blue
-links-as-notes: true
-...
-
-
-    
+   
 # Module `tuyaface` {#tuyaface}
 
 Functionality for communicating with a Tuya device.
@@ -39,7 +24,7 @@ Functionality for communicating with a Tuya device.
 
 
     
-> `def set_state(device: dict, value, idx: int = 1)`
+> `def set_state(device: dict, value, idx: int = 1) -> bool`
 
 
 Send status update request for one dps value to the tuya device.
@@ -52,7 +37,7 @@ returns bool
 
 
     
-> `def set_status(device: dict, dps: dict)`
+> `def set_status(device: dict, dps: dict) -> bool`
 
 
 Send state update request to the tuya device and waits for response.
@@ -65,7 +50,7 @@ returns bool
 
 
     
-> `def status(device: dict)`
+> `def status(device: dict) -> dict`
 
 
 Request status of the tuya device.
@@ -116,6 +101,202 @@ Encrypt and optionally base64-encode.
 # Module `tuyaface.const` {#tuyaface.const}
 
 Tuya constants.
+
+
+
+
+
+    
+## Classes
+
+
+    
+### Class `CMD_TYPE` {#tuyaface.const.CMD_TYPE}
+
+
+
+> `class CMD_TYPE(value, names=None, *, module=None, qualname=None, type=None, start=1)`
+
+
+Tuya message types.
+
+
+    
+#### Ancestors (in MRO)
+
+* [enum.IntEnum](#enum.IntEnum)
+* [builtins.int](#builtins.int)
+* [enum.Enum](#enum.Enum)
+
+
+
+    
+#### Class variables
+
+
+    
+##### Variable `ACTIVE` {#tuyaface.const.CMD_TYPE.ACTIVE}
+
+
+
+    
+##### Variable `AP_CONFIG` {#tuyaface.const.CMD_TYPE.AP_CONFIG}
+
+
+
+    
+##### Variable `AP_CONFIG_NEW` {#tuyaface.const.CMD_TYPE.AP_CONFIG_NEW}
+
+
+
+    
+##### Variable `BIND` {#tuyaface.const.CMD_TYPE.BIND}
+
+
+
+    
+##### Variable `CONTROL` {#tuyaface.const.CMD_TYPE.CONTROL}
+
+
+
+    
+##### Variable `CONTROL_NEW` {#tuyaface.const.CMD_TYPE.CONTROL_NEW}
+
+
+
+    
+##### Variable `DP_QUERY` {#tuyaface.const.CMD_TYPE.DP_QUERY}
+
+
+
+    
+##### Variable `DP_QUERY_NEW` {#tuyaface.const.CMD_TYPE.DP_QUERY_NEW}
+
+
+
+    
+##### Variable `ENABLE_WIFI` {#tuyaface.const.CMD_TYPE.ENABLE_WIFI}
+
+
+
+    
+##### Variable `HEART_BEAT` {#tuyaface.const.CMD_TYPE.HEART_BEAT}
+
+
+
+    
+##### Variable `LAN_CHECK_GW_UPDATE` {#tuyaface.const.CMD_TYPE.LAN_CHECK_GW_UPDATE}
+
+
+
+    
+##### Variable `LAN_DELETE_SUB_DEV` {#tuyaface.const.CMD_TYPE.LAN_DELETE_SUB_DEV}
+
+
+
+    
+##### Variable `LAN_EXPORT_APP_CONFIG` {#tuyaface.const.CMD_TYPE.LAN_EXPORT_APP_CONFIG}
+
+
+
+    
+##### Variable `LAN_GW_ACTIVE` {#tuyaface.const.CMD_TYPE.LAN_GW_ACTIVE}
+
+
+
+    
+##### Variable `LAN_GW_UPDATE` {#tuyaface.const.CMD_TYPE.LAN_GW_UPDATE}
+
+
+
+    
+##### Variable `LAN_PUBLISH_APP_CONFIG` {#tuyaface.const.CMD_TYPE.LAN_PUBLISH_APP_CONFIG}
+
+
+
+    
+##### Variable `LAN_PUBLISH_CLOUD_CONFIG` {#tuyaface.const.CMD_TYPE.LAN_PUBLISH_CLOUD_CONFIG}
+
+
+
+    
+##### Variable `LAN_PUBLISH_SCENE_PANEL` {#tuyaface.const.CMD_TYPE.LAN_PUBLISH_SCENE_PANEL}
+
+
+
+    
+##### Variable `LAN_REMOVE_GW` {#tuyaface.const.CMD_TYPE.LAN_REMOVE_GW}
+
+
+
+    
+##### Variable `LAN_REPORT_SUB_DEV` {#tuyaface.const.CMD_TYPE.LAN_REPORT_SUB_DEV}
+
+
+
+    
+##### Variable `LAN_SCENE` {#tuyaface.const.CMD_TYPE.LAN_SCENE}
+
+
+
+    
+##### Variable `LAN_SET_GW_CHANNEL` {#tuyaface.const.CMD_TYPE.LAN_SET_GW_CHANNEL}
+
+
+
+    
+##### Variable `LAN_SUB_DEV_REQUEST` {#tuyaface.const.CMD_TYPE.LAN_SUB_DEV_REQUEST}
+
+
+
+    
+##### Variable `QUERY_WIFI` {#tuyaface.const.CMD_TYPE.QUERY_WIFI}
+
+
+
+    
+##### Variable `RENAME_DEVICE` {#tuyaface.const.CMD_TYPE.RENAME_DEVICE}
+
+
+
+    
+##### Variable `RENAME_GW` {#tuyaface.const.CMD_TYPE.RENAME_GW}
+
+
+
+    
+##### Variable `SCENE_EXECUTE` {#tuyaface.const.CMD_TYPE.SCENE_EXECUTE}
+
+
+
+    
+##### Variable `STATUS` {#tuyaface.const.CMD_TYPE.STATUS}
+
+
+
+    
+##### Variable `TOKEN_BIND` {#tuyaface.const.CMD_TYPE.TOKEN_BIND}
+
+
+
+    
+##### Variable `UDP` {#tuyaface.const.CMD_TYPE.UDP}
+
+
+
+    
+##### Variable `UDP_NEW` {#tuyaface.const.CMD_TYPE.UDP_NEW}
+
+
+
+    
+##### Variable `UNBIND` {#tuyaface.const.CMD_TYPE.UNBIND}
+
+
+
+    
+##### Variable `UNKNOWN` {#tuyaface.const.CMD_TYPE.UNKNOWN}
+
 
 
 
@@ -217,10 +398,21 @@ Tuya client main loop.
 
 
     
-> `def set_state(self, value, idx: int = 1)`
+> `def set_state(self, value, idx: int = 1) -> dict`
 
 
 Set state.
+
+    
+##### Method `set_status` {#tuyaface.tuyaclient.TuyaClient.set_status}
+
+
+
+    
+> `def set_status(self, value: dict) -> dict`
+
+
+Set status.
 
     
 ##### Method `status` {#tuyaface.tuyaclient.TuyaClient.status}
@@ -228,7 +420,7 @@ Set state.
 
 
     
-> `def status(self)`
+> `def status(self) -> dict`
 
 
 Request status.
