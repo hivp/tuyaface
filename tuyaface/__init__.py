@@ -79,7 +79,7 @@ def _generate_payload(
         if command == CMD_TYPE.CONTROL:
             payload_crypt = aescipher.encrypt(device["localkey"], payload_json)
             premd5string = (
-                b"data=" + payload_crypt + b"||lpv=" + b"3.1||" + device["localkey"]
+                b"data=" + payload_crypt + b"||lpv=" + b"3.1||" + bytes(device["localkey"], "latin1")
             )
             m = md5()
             m.update(premd5string)
